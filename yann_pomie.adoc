@@ -1,0 +1,25 @@
+= Document d'architecture technique
+Yann POMIE <yann.pomie@etu.umontpellier.fr>
+v0.0, 2019-03-22
+:toc:
+:homepage: https://polycode.do-2021.fr/
+
+== Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
+
+== Q2: Comment gérer le système d’authentification avec un OIDC?
+
+== Q3: Communication Inter micro-services
+
+== Q4: Comment tracer les logs et les requêtes?
+
+== Q5: Comment ajouter un moteur de recherche?
+
+== Q6: Comment mettre en place l’architecture de runner
+
+== Q7: Comment gérer les données?
+
+== Q8: Comment ajouter une application mobile dans le système
+
+== Q9: Comment gérer les problématiques de sécurité
+
+== Q10: Comment intégrer les applications UI?
