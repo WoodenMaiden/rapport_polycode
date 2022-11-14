@@ -434,8 +434,7 @@ Voici les définitions du vocabulaire métier que vous serez succesptible de tro
 === Découpage en quartier fonctionnels
 En considérant ces users stories on peut en déduire ces quartiers fonctionnels :
 
-. Authentification : permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme.
-. Authorisation : Vérifie les droits de l'utilisateur sur une ressource.
+. Authentification/Authorisation: permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
 . Gestion des utilisateurs : permet la gestion des utilisateurs.
 . Edition de modules : Donne la possibilité d'éditer des modules ainsi que leurs contenus et composants.
 . Gestion des évaluations : Donne la possibilité de la gestion des évaluations et des tests.
@@ -445,6 +444,13 @@ En considérant ces users stories on peut en déduire ces quartiers fonctionnels
 .Architecture en microservices proposée
 image::q1_architecture.png["Architecture de polycode"]
 
+=== Justification de l'architecture
+
+Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service nottament au niveau des canneaux de communications, en effet c'est l'API gateway qui appelle les services adéquats et non pas les services qui s'appellent entre eux. Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance et de faciliter la maintenance.
+
+Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais on augmente le nombre de cannaux de communications entre l'API gateway et les services.
+
+Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés mais cela aurait impliqué de faire des appels API supplémentaires et donc d'encore augmenter le nombre de cannaux de communications et donc d'augmenter le temps de latence. De plus ça n'aurait aucun sens car les notions d' utilisateur et d'équipe sont interdépendantes et que le module n'a au final d'intéréssant que les contenus qu'il contient. 
 
 <<<
 == Q2: Comment gérer le système d’authentification avec un OIDC?
