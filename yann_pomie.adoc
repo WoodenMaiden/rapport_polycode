@@ -3,6 +3,7 @@ Yann POMIE <yann.pomie@etu.umontpellier.fr>
 v0.0.1, 02-11-2022
 :toc:
 :homepage: https://polycode.do-2021.fr/
+:img: ./images
 
 <<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
@@ -442,7 +443,7 @@ En considérant ces users stories on peut en déduire ces quartiers fonctionnels
 . Gestion de campagne : Donne la possibilité de la gestion des campagnes de tests.
 
 .Architecture en microservices proposée
-image::q1_architecture.png["Architecture de polycode"]
+image::{img}/q1_architecture.png["Architecture de polycode"]
 
 === Justification de l'architecture
 
@@ -474,7 +475,8 @@ On peut associer une base de données au serveur Zipkin pour stocker les informa
 
 Voici l'architecture proposée pour l'intégration de Zipkin dans notre application :
 
-image::q4_architecture.png["Zipkin architecture"]
+.Proposition d'architecture pour l'intégration de Zipkin
+image::{img}/q4_architecture.png["Zipkin architecture"]
 
 Nous aurions pu utiliser Jaeger à la place de Zipkin, cependant Zipkin supporte plus de langages.
 
@@ -482,7 +484,10 @@ Les logs seront stockés dans une base de données Elasticsearch, ses performanc
 
 Voici un diagramme de séquence qui illustre le fonctionnement de Zipkin et d'Elasticsearch lors d'une création de compte :
 
-image::q4_sequence.png["Zipkin diagramme de séquence"]
+.Diagramme de séquence décrivant la création de compte
+image::{img}/q4_sequence.png["Zipkin diagramme de séquence"]
+
+Apache Kafka est utilisé dans cette configuration pour envoyer les logs à Zipkin, le but de cette utilisation est d'envoyer des requêtes de manière asynchrone afin de ne pas ralentir les microservices utilisateur et d'envoi de mail, ainsi une inscription sera rapide pour l'utilisateur.
 
 <<<
 == Q5: Comment ajouter un moteur de recherche?
