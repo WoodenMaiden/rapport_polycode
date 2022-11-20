@@ -461,6 +461,29 @@ Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés
 <<<
 == Q4: Comment tracer les logs et les requêtes?
 
+Le traçage distribué est une méthode employée pour suivre le parcours d'une requête dans un système distribué comme dans le cas d'une architecure en microservices. Il permet de suivre les requêtes et les réponses entre les différents services.
+
+Une solution de traçage distribué va marquer une requête de l'utilisateur avec un identifiant unique et le transmettre à chaque service qui la reçoit. Chaque traitement effectué sur la requête va ajouter des informations tel que le nom du service, le temps de traitement, etc.
+Zipkin est une solution qui va collecter les informations de traçage et de présenter les données de façon compréhensible. Zipkin est composé de 3 composants :  
+
+* Un serveur qui va collecter les informations de traçage et les stocker dans une base de données.
+* Un client qui va ajouter des informations de traçage à chaque requête.
+* Une interface web qui va permettre de visualiser les informations de traçage. 
+
+On peut associer une base de données au serveur Zipkin pour stocker les informations de traçage.
+
+Voici l'architecture proposée pour l'intégration de Zipkin dans notre application :
+
+image::q4_architecture.png["Zipkin architecture"]
+
+Nous aurions pu utiliser Jaeger à la place de Zipkin, cependant Zipkin supporte plus de langages.
+
+Les logs seront stockés dans une base de données Elasticsearch, ses performances permettent le stockage et la lecture de nombreux logs.
+
+Voici un diagramme de séquence qui illustre le fonctionnement de Zipkin et d'Elasticsearch lors d'une création de compte :
+
+image::q4_sequence.png["Zipkin diagramme de séquence"]
+
 <<<
 == Q5: Comment ajouter un moteur de recherche?
 
