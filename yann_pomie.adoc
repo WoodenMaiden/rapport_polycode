@@ -438,7 +438,7 @@ En considérant ces users stories on peut en déduire ces quartiers fonctionnels
 
 . Authentification/Authorisation: permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
 . Gestion des utilisateurs : permet la gestion des utilisateurs.
-. Edition de modules : Donne la possibilité d'éditer des modules ainsi que leurs contenus et composants.
+. Edition de modules : Donne la possibilité d'éditer et de visualiser des modules ainsi que leurs contenus et composants.
 . Gestion des évaluations : Donne la possibilité de la gestion des évaluations et des tests.
 . Envoi de mail : envoie des mail aux utilisateurs.
 . Gestion de campagne : Donne la possibilité de la gestion des campagnes de tests.
@@ -452,7 +452,7 @@ Le but premier de cette organsation est de réduire au maximum les dépendances 
 
 Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais on augmente le nombre de cannaux de communications entre l'API gateway et les services.
 
-Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés mais cela aurait impliqué de faire des appels API supplémentaires et donc d'encore augmenter le nombre de cannaux de communications et donc d'augmenter le temps de latence. De plus ça n'aurait aucun sens car les notions d' utilisateur et d'équipe sont interdépendantes et que le module n'a au final d'intéréssant que les contenus qu'il contient. 
+Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés mais cela aurait impliqué de faire des appels API supplémentaires et donc d'encore augmenter le nombre de cannaux de communications et donc d'augmenter le temps de latence. De plus ça n'aurait aucun sens car les notions d'utilisateur et d'équipe sont interdépendantes et que le module n'a au final d'intéréssant que les contenus qu'il contient.
 
 <<<
 == Q2: Comment gérer le système d’authentification avec un OIDC?
@@ -493,6 +493,7 @@ Apache Kafka est utilisé dans cette configuration pour envoyer les logs à Zipk
 <<<
 == Q5: Comment ajouter un moteur de recherche?
 
+=== Moteur de recherche
 Afin de pouvoir rechercher du texte grâce à une barre de recherche, nous devons d'abord identifier les données pouvant être sujets à une recherche.
 À l'heure actuelle nous souhaitons pouvoir retrouver un exercice ou un cours à partir du texte qu'il contient, à l'heure actuelle les cours de Polycode sont organisés avec cette structure.
 
@@ -556,11 +557,26 @@ En cas de nouvelles attentes concernant la recherche (par exemple la recherche d
 
 Nous avons donc ces diagrammes de séquence :
 
+.Diagramme de séquence décrivant l'indexation d'un module
+image::{img}/q5_sequence_indexation.png["Diagramme de séquence d'une indexation"]
+
 .Diagramme de séquence décrivant la recherche par mot clé
 image::{img}/q5_sequence_recherche.png["Diagramme de séquence de la recherche"]
 
+=== Intégration dans le frontend
 
+Concernant le frontend nous pouvons imaginer une barre de recherche dans l'en-tête de la page. Qui une fois clickée ouvrira une fenêtre modale avec un champ de recherche. Cela permettra de pouvoir rechercher sans avoir à se soucier des composants de la page.
 
+.Proposition d'intégration de la barre de recherche
+image::{img}/q5_ui_searchbar.png["Proposition d'intégration de la barre de recherche"]
+
+.Proposition d'interface de recherche
+image::{img}/q5_ui_search.png["Proposition d'interface de recherche"]
+
+Quand l'utilisateur rentre du texte une requête est envoyée au microservice de modules qui va renvoyer les résultats. Les données contenues dans le champ ``IndexedDocument.data`` permettront de détailler les résultats de la recherche.
+
+.Proposition d'interface de résultats de recherche
+image::{img}/q5_ui_search_results.png["Proposition d'interface de résultats de recherche"]
 
 <<<
 == Q6: Comment mettre en place l’architecture de runner
