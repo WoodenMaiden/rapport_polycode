@@ -12,7 +12,7 @@ v0.0.1, 02-11-2022
 === Vocabulaire métier et user stories
 Suite à de nombreuses incompréhensions, nous avons redéfini une grande partie du vocabulaire métier, nous en avons aussi profité pour redéfinir nos user stories. 
 
-Voici les définitions du vocabulaire métier que vous serez succesptible de trouver dans nos user stories
+Voici les définitions du vocabulaire métier que vous serez succesptible de trouver dans nos user stories et dans le reste du document.
 
 * *Invité* : Client n'ayant pas de compte sur la plateforme 
 * *Utilisateur* : Client ayant un compte sur la plateforme
@@ -438,10 +438,11 @@ En considérant ces users stories on peut en déduire ces quartiers fonctionnels
 
 . Authentification/Authorisation: permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
 . Gestion des utilisateurs : permet la gestion des utilisateurs.
-. Edition de modules : Donne la possibilité d'éditer et de visualiser des modules ainsi que leurs contenus et composants.
-. Gestion des évaluations : Donne la possibilité de la gestion des évaluations et des tests.
+. Edition de modules : donne la possibilité d'éditer et de visualiser des modules ainsi que leurs contenus et composants.
+. Gestion des évaluations : donne la possibilité de la gestion des évaluations et des tests.
 . Envoi de mail : envoie des mail aux utilisateurs.
-. Gestion de campagne : Donne la possibilité de la gestion des campagnes de tests.
+. Gestion de campagne : donne la possibilité de la gestion des campagnes de tests.
+. Gestion des runners : permet de lancer des runners afin d'éxécuter du code.
 
 .Architecture en microservices proposée
 image::{img}/q1_architecture.png["Architecture de polycode"]
@@ -580,6 +581,28 @@ image::{img}/q5_ui_search_results.png["Proposition d'interface de résultats de 
 
 <<<
 == Q6: Comment mettre en place l’architecture de runner
+
+=== Définition du runner
+
+Le runner est un élément central dans le fonctionnement de Polycode. Il s'agit d'une API à laquelle on donne du code, un language et des paramètres à passer par l'entrée standard, elle est chargée de créer des environnements isolés (conteneurs, machines virtuelles etc) qui vont se charger d'exécuter le code en renvoyant le résultat de l'exécution sur leur sortie standard. C'est cette sortie standard qui sera comparée aux données du validateur pour déterminer si l'exercice a été réussi ou non.
+
+=== Architecture
+
+La première chose à laquelle on peut penser en parlant d'isolation c'est de privilégier la création de machines virtuelles qui, contrairement à ce que l'on pense, peuvent démarrer relativement rapidement. Ce besoin de d'isolation est important car il faut éviter que le code de l'utilisateur puisse interférer avec l' infrastructure avec d'autres processus, isolation que Docker ne peut pas garantir car les conteneurs docker sont des procesuss isolés avec ``iptables`` et ``cgroup``.
+
+En plus d'une isolation du code, il faut aussi isoler le réseau pour empêcher l'utilisateur d'utiliser du code qui pourrait cibler nos services internes, c'est pour cela que nous empêcherons les runners d'envoyer des paquets réseau via un pare feu.
+
+.Schématisation du service de runner
+image::{img}/q6_architecture_service.png["Architecture du runner"]
+
+L'équipe de Polycode est en ce moment même en train de développer un gestionnaire de machine virtuelle qui gèrera ces aspects d'isolation et de lancement de machines virtuelle.
+
+=== Enregistrement des runners
+
+Afin de pouvoir contacter les runners pouvant être sur plusieurs machines virtuelles nous aurons besoin d'un register qui gardera en mémoire l'adresse des différents services. Nous utiliserons Consul par HashiCorp qui permet de faire de la découverte de service, les runners s'enregistreront auprès de consul et consul nous permettra de les récupérer, l'avantage de Consul est que les proxy qu'il génére supportent de base la répartition de charge, il sera donc plus facile de distribuer les services runners sur plusieurs machines. Le même raisonnement s'applique sur nos autres microservices.
+
+.Schéma issu du site internet de Consul
+image::{img}/consul_architecture.svg["Architecture de Consul"]
 
 <<<
 == Q7: Comment gérer les données?
