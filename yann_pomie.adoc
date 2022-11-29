@@ -4,6 +4,7 @@ v0.0.1, 02-11-2022
 :toc:
 :homepage: https://polycode.do-2021.fr/
 :img: ./images
+:source-highlighter: highlight.js
 
 <<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
@@ -491,6 +492,75 @@ Apache Kafka est utilisé dans cette configuration pour envoyer les logs à Zipk
 
 <<<
 == Q5: Comment ajouter un moteur de recherche?
+
+Afin de pouvoir rechercher du texte grâce à une barre de recherche, nous devons d'abord identifier les données pouvant être sujets à une recherche.
+À l'heure actuelle nous souhaitons pouvoir retrouver un exercice ou un cours à partir du texte qu'il contient, à l'heure actuelle les cours de Polycode sont organisés avec cette structure.
+
+.Classes impliquées dans la recherche
+[source, typescript]
+....
+class Module {
+    id: uuid;
+    name: string; // Champ sujet à recherche
+	description: string; // Champ sujet à recherche
+	type: 'challenge' | 'practice' | 'certification' | 'submodule' | ...;
+    // ...
+	contents: Content[];
+	modules: Module[];
+	tags: string[]; // Champ sujet à recherche
+}
+
+// ...
+
+class Content {
+	id: uuid;
+	name: string; // Champ sujet à recherche
+	description: string; // Champ sujet à recherche
+	type: 'exercise' | 'lesson' | ...;
+	rootComponent: Component;
+    // ...
+}
+
+// ...
+
+class Component {
+    id: uuid;
+	type: 'container' | 'editor' | 'quizz' | 'markdown';
+	// ...
+    components: Component[];
+	markdown: string; // Champ sujet à recherche
+}
+....
+
+Les champs name, description, tags et markdown sont des champs sur lesquels l'utilisateur pourra effectuer des recherches full text search. Cependant pour éviter d'avoir à indexer plusieurs champs d'un même document, le microservice module se chargera d'insérer un document dans une autre base de données contenant la concaténation de ces champs et de l'identifiant de l'objet en question. Ce même microservice se chargera aussi d'effectuer les recherches.
+
+.Structure du document dans la base de données de recherche
+[source, typescript]
+....
+type IndexedDocument = {
+    id: uuid;
+    text: string; // le texte concaténé
+
+    // ces champs ne seront jamais utilisés pour une recherche
+    data : {
+        type: 'module' | 'content' | 'component';
+        name: string;
+        description: string;
+    };
+};
+....
+
+La base de données en question sera Elasticsearch, cette dernière utilisant le moteur apache Lucene, il nous sera possible de faire des recherches en full text search sur le texte de chaque module, contenu et composant.
+
+En cas de nouvelles attentes concernant la recherche (par exemple la recherche d'utilisateurs), il serait envisageable de créer un microservice dédié à la recherche. Nous ne le créerons pas pour l'instant car seuls les modules, contenus et composants sont concernés par la recherche et que cela violerait le principe YAGNI (You Ain't Gonna Need It)
+
+Nous avons donc ces diagrammes de séquence :
+
+.Diagramme de séquence décrivant la recherche par mot clé
+image::{img}/q5_sequence_recherche.png["Diagramme de séquence de la recherche"]
+
+
+
 
 <<<
 == Q6: Comment mettre en place l’architecture de runner
