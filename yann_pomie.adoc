@@ -461,6 +461,26 @@ Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés
 <<<
 == Q3: Communication Inter micro-services
 
+Quand nous regardons les microservices que nous avons défini plus tôt nous pouvons remarquer que grand nombre d'entre eux devront implémenter un CRUD tel que le microservice des utilisateurs, des modules etc., il est donc nécessaire d'utiliser un protocole de communication synchrone afin de faire remonter une erreur en cas de problème au niveau des bases de données. Pour ce faire ces services vont utiliser le protocole HTTP avec des endpoint REST. 
+
+Pour les microservices qui ne sont pas des CRUD comme le microservice d'envoi de mail, il est plus intéressant d'utiliser un protocole de communication asynchrone. En effet, si nous prenons toujours l'example de l'envoi de mail, il est inutile de faire remonter une erreur au niveau de l'API gateway si le mail n'a pas pu être envoyé ce dernier pouvant être renvoyé, il est préférable de simplement logger l'erreur et de continuer le traitement.
+
+Dans des circonstances normale nous serions partis sur un système de message queue tel que RabbitMQ, système grâce auquel toutes les communications sont stockées dans une file d'attente permettant au destinataire de traiter les messages à son rythme et de reprendre là où il en était en cas de crash. Cependant le sujet nous interdit explicitement d'utiliser ce type de protocole. 
+
+Dans un premier temps il a été envisagé d'utiliser la technique du http long polling. Cette technique consiste à faire de longues requêtes HTTP en boucle jusqu'à ce que le serveur renvoie une réponse, ce qui permet de simuler une communication asynchrone. Dans notre cas c'est le microservice d'envoi de mail qui va faire les requêtes HTTP jusqu'à ce qu'une réponse soit reçue. Cette approche est très simple conceptuellement, dependant elle présente beaucoup trop de désavantages pour être utilisée. En effet le document RFC6202 "Known Issues and Best Practices for the Use of Long Polling and Streaming in Bidirectional HTTP" <<rfc6202>> publié en avril 2011, liste de nombreux problèmes liés à cette technique dont les plus importants sont: 
+
+* Une consommation importante de ressources côté serveur, en effet le serveur doit maintenir une connection ouverte avec le client et doit traiter les requêtes HTTP même si aucune réponse n'est attendue.
+* Une certaine latence, même si l'envoi de mail est un processus long, il est préférable de réduire la latence de nos processus au maximum.
+* Les timeout pouvant poser problème dans la mesure ou les proxys peuvent fermer la connexion avant que le serveur ne renvoie une réponse.
+
+La solution retenue est donc d'utiliser des websockets pour communiquer avec ces services, en effet les websockets permettent des communications asynchrones entre nos services et peuvent passer à travers un proxy. Le seul désavantage de cette solution est qu'elle nécessite une implémentation permettant de relancer les connexions en cas de crash du serveur, chose que le protocole ne fait pas automatiquement.
+
+// __        _____ ____  
+// \ \      / /_ _|  _ \ 
+//  \ \ /\ / / | || |_) |
+//   \ V  V /  | ||  __/ 
+//    \_/\_/  |___|_|
+
 <<<
 == Q4: Comment tracer les logs et les requêtes?
 
@@ -482,7 +502,7 @@ image::{img}/q4_architecture.png["Zipkin architecture"]
 
 Nous aurions pu utiliser Jaeger à la place de Zipkin, cependant Zipkin supporte plus de langages.
 
-Les logs seront stockés dans une base de données Elasticsearch, ses performances permettent le stockage et la lecture de nombreux logs.
+Les logs seront stockés dans une base de données Elasticsearch, ses performances permettent le stockage et la lecture de nombreux logs. Malgré son efficacité nous prendrons bien soin de la placer sur un autre noeud afin que ses opérations ne perturbent pas d'autres pods.
 
 Voici un diagramme de séquence qui illustre le fonctionnement de Zipkin et d'Elasticsearch lors d'une création de compte :
 
@@ -552,7 +572,7 @@ type IndexedDocument = {
 };
 ....
 
-La base de données en question sera Elasticsearch, cette dernière utilisant le moteur apache Lucene, il nous sera possible de faire des recherches en full text search sur le texte de chaque module, contenu et composant.
+La base de données en question sera Elasticsearch, cette dernière utilisant le moteur apache Lucene, il nous sera possible de faire des recherches en full text search sur le texte de chaque module, contenu et composant. Tout comme pour les logs nous placrons cette base de données sur une autre machine physique, séparée des autres services pour ne pas interférer avec eux.
 
 En cas de nouvelles attentes concernant la recherche (par exemple la recherche d'utilisateurs), il serait envisageable de créer un microservice dédié à la recherche. Nous ne le créerons pas pour l'instant car seuls les modules, contenus et composants sont concernés par la recherche et que cela violerait le principe YAGNI (You Ain't Gonna Need It)
 
@@ -615,3 +635,8 @@ image::{img}/consul_architecture.svg["Architecture de Consul"]
 
 <<<
 == Q10: Comment intégrer les applications UI?
+
+<<<
+[bibliography]
+== Bibliographie/Webographie
+* [[[rfc6202]]] https://www.rfc-editor.org/rfc/rfc6202#section-2.2
