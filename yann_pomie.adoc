@@ -5,6 +5,7 @@ v0.0.1, 02-11-2022
 :homepage: https://polycode.do-2021.fr/
 :img: ./images
 :source-highlighter: highlight.js
+:sectanchors: true
 
 <<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
@@ -436,7 +437,7 @@ Voici les définitions du vocabulaire métier que vous serez succesptible de tro
 === Découpage en quartier fonctionnels
 En considérant ces users stories on peut en déduire ces quartiers fonctionnels :
 
-. Authentification/Authorisation: permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
+. Authentification/Authorisation : permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
 . Gestion des utilisateurs : permet la gestion des utilisateurs.
 . Edition de modules : donne la possibilité d'éditer et de visualiser des modules ainsi que leurs contenus et composants.
 . Gestion des évaluations : donne la possibilité de la gestion des évaluations et des tests.
@@ -449,11 +450,14 @@ image::{img}/q1_architecture.png["Architecture de polycode"]
 
 === Justification de l'architecture
 
-Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service nottament au niveau des canneaux de communications, en effet c'est l'API gateway qui appelle les services adéquats et non pas les services qui s'appellent entre eux. Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance et de faciliter la maintenance.
+Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service nottament au niveau des canneaux de communications, en effet on peut remarquer que peu de services comminiquent entre eux, hormis avec Keycloak qui est crucialpour l'idententification et l'autorisation (cf. à la question 2). Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance générale et de faciliter la maintenance.
 
-Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais on augmente le nombre de cannaux de communications entre l'API gateway et les services.
+Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais en cas de panne de toutes les instances keycloak, les utilisateurs ne pourront pas interagir avec l'application.
 
-Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés mais cela aurait impliqué de faire des appels API supplémentaires et donc d'encore augmenter le nombre de cannaux de communications et donc d'augmenter le temps de latence. De plus ça n'aurait aucun sens car les notions d'utilisateur et d'équipe sont interdépendantes et que le module n'a au final d'intéréssant que les contenus qu'il contient.
+Vu que nous nous plaçons dans une architecture de microservices il faut partir du principe que nos services auront des réplicas qui vont crasher et dautres qui vont démarrer. Pour assurer un bon routage de nos requêtes, nous allons utiliser un service registery afin de garder en mémoire nos services encore vivants ainsi que leur adresse IP (cf. <<_enregistrement_des_runners,Question 9 - Enregistrement des runners>>).
+
+
+Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés mais cela aurait impliqué de faire des appels API supplémentaires et donc d'encore augmenter le nombre de cannaux de communications et donc d'augmenter le temps de latence. De plus ça n'aurait aucun sens car les notions d'utilisateur et d'équipe sont interdépendantes et qu'un module n'a au final d'intéréssant que les contenus qu'il contient.
 
 <<<
 == Q2: Comment gérer le système d’authentification avec un OIDC?
