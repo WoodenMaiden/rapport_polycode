@@ -463,23 +463,29 @@ Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés
 
 Quand nous regardons les microservices que nous avons défini plus tôt nous pouvons remarquer que grand nombre d'entre eux devront implémenter un CRUD tel que le microservice des utilisateurs, des modules etc., il est donc nécessaire d'utiliser un protocole de communication synchrone afin de faire remonter une erreur en cas de problème au niveau des bases de données. Pour ce faire ces services vont utiliser le protocole HTTP avec des endpoint REST. 
 
-Pour les microservices qui ne sont pas des CRUD comme le microservice d'envoi de mail, il est plus intéressant d'utiliser un protocole de communication asynchrone. En effet, si nous prenons toujours l'example de l'envoi de mail, il est inutile de faire remonter une erreur au niveau de l'API gateway si le mail n'a pas pu être envoyé ce dernier pouvant être renvoyé, il est préférable de simplement logger l'erreur et de continuer le traitement.
+Pour les microservices qui ne sont pas des CRUD comme le microservice d'envoi de mail, il est plus intéressant d'utiliser un protocole de communication asynchrone. En effet, si nous prenons toujours l'example de l'envoi de mail, il est inutile de faire remonter une erreur au niveau de l'API gateway si le mail n'a pas pu être envoyé, ce dernier pouvant être renvoyé, il est préférable de simplement logger l'erreur et de continuer le traitement.
 
 Dans des circonstances normale nous serions partis sur un système de message queue tel que RabbitMQ, système grâce auquel toutes les communications sont stockées dans une file d'attente permettant au destinataire de traiter les messages à son rythme et de reprendre là où il en était en cas de crash. Cependant le sujet nous interdit explicitement d'utiliser ce type de protocole. 
 
-Dans un premier temps il a été envisagé d'utiliser la technique du http long polling. Cette technique consiste à faire de longues requêtes HTTP en boucle jusqu'à ce que le serveur renvoie une réponse, ce qui permet de simuler une communication asynchrone. Dans notre cas c'est le microservice d'envoi de mail qui va faire les requêtes HTTP jusqu'à ce qu'une réponse soit reçue. Cette approche est très simple conceptuellement, dependant elle présente beaucoup trop de désavantages pour être utilisée. En effet le document RFC6202 "Known Issues and Best Practices for the Use of Long Polling and Streaming in Bidirectional HTTP" <<rfc6202>> publié en avril 2011, liste de nombreux problèmes liés à cette technique dont les plus importants sont: 
+Dans un premier temps il a été envisagé d'utiliser la technique du http long polling. Cette technique consiste à faire de longues requêtes HTTP en boucle jusqu'à ce que le serveur renvoie une réponse, ce qui permet de simuler une communication asynchrone. Dans notre cas c'est le microservice d'envoi de mail qui va faire les requêtes HTTP jusqu'à ce qu'une réponse soit reçue. Cette approche est très simple conceptuellement, dependant elle présente beaucoup trop de désavantages pour être utilisée. En effet un _proof of concept_ <<poc_q3_lp>> ainsi que le document RFC6202 "Known Issues and Best Practices for the Use of Long Polling and Streaming in Bidirectional HTTP" <<rfc6202>> publié en avril 2011, mettent en évidence de nombreux problèmes liés à cette technique dont les plus importants sont: 
 
 * Une consommation importante de ressources côté serveur, en effet le serveur doit maintenir une connection ouverte avec le client et doit traiter les requêtes HTTP même si aucune réponse n'est attendue.
 * Une certaine latence, même si l'envoi de mail est un processus long, il est préférable de réduire la latence de nos processus au maximum.
 * Les timeout pouvant poser problème dans la mesure ou les proxys peuvent fermer la connexion avant que le serveur ne renvoie une réponse.
 
-La solution retenue est donc d'utiliser des websockets pour communiquer avec ces services, en effet les websockets permettent des communications asynchrones entre nos services et peuvent passer à travers un proxy. Le seul désavantage de cette solution est qu'elle nécessite une implémentation permettant de relancer les connexions en cas de crash du serveur, chose que le protocole ne fait pas automatiquement.
+Suite à un deuxième _proof of concept_ <<poc_q3_ws>>, une autre solution est d'utiliser des websockets pour communiquer avec ces services, en effet les websockets permettent des communications asynchrones entre nos services qui peuvent passer à travers un proxy.
+Hélas cette solution admet deux gros problèmes :
 
-// __        _____ ____  
-// \ \      / /_ _|  _ \ 
-//  \ \ /\ / / | || |_) |
-//   \ V  V /  | ||  __/ 
-//    \_/\_/  |___|_|
+* Il est impossible de pour l'un des deux parties de savoir si l'autre est indisponible ce qui pose problème dans un environnement en picroservice où tout service peut s'arrêter à tout moment. Une implémentation pour relancer le socket s'impose donc.  
+* Les connections étant persistentes, un scaling horizontal est tout bonnement impossible, les deux parties devant absolument être les mêmes. 
+
+La solution la plus simple et posant le moins de soucis reste des appels HTTP vers une API REST que notre fil d'éxécution principal n'attendra pas, même si cette solution est moins _fault tolerant_ qu'une message queue, elle a le mérite d'être très simple à impémenter (cf. <<poc_q3_http>>), là ou du RPC nécéssiterait des fichiers de définition. De plus cela permet d'éviter de faire de nos microservice des hybrides API REST/Serveur long polling ou API REST/Serveur websocket comme vous pouvez le voir dans les premiers _proof of concept_ <<poc_q3_ws>> <<poc_q3_lp>>.
+
+Pour illustrer notre solution faisons un diagramme de séquence en prenant l'exemple de quelqu'un s'incrivant à Polycode:
+
+.Diagramme de séquence d'une inscription
+image::{img}/q3_sequence.png["Diagramme de séquence d'une inscription"]
+
 
 <<<
 == Q4: Comment tracer les logs et les requêtes?
@@ -638,5 +644,8 @@ image::{img}/consul_architecture.svg["Architecture de Consul"]
 
 <<<
 [bibliography]
-== Bibliographie/Webographie
+== Bibliographie/Webographie/Liens
+* [[[poc_q3_lp]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-long-polling
+* [[[poc_q3_ws]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-ws
+* [[[poc_q3_http]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-http-async
 * [[[rfc6202]]] https://www.rfc-editor.org/rfc/rfc6202#section-2.2
