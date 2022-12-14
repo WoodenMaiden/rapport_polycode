@@ -637,6 +637,38 @@ image::{img}/consul_architecture.svg["Architecture de Consul"]
 <<<
 == Q7: Comment gérer les données?
 
+=== Organisation des bases de données
+
+Quand on se pose la question de l'organisation des données la première question que l'on peut se poser est "comment vont être associés les services et les bases de données ?", pour répondre à cette question on a deux grandes approches: Le pattern "shared database" et le pattern du "Database per service".
+
+La première aproche consiste à mettre en place une de base de données (ou un cluster) dans laquelle tous les services viendraient écrire et lire. Cette manière d'organiser sa base de donnée permet d'avoir des services qui sont aisément capables de faire des jointures si besoin, la source de donnée étant unique. 
+
+Cependant ce choix de design n'est adapté qu'à des architectures monolithiques, il est même considéré par beaucoup comme un anti-pattern. En effet la base de données consistera en un _Single point of failure_ si la base de données plante, l'entièreté du système sera paralysé. De plus cela entrave le développement des services car tous les services seront développés pour un seul type de base de données. Ces pour ces raisons que nous rejetons instantanément ce pattern.
+
+.Shared database pattern
+image::{img}/shared-database.png["Pattern shared database"]
+
+À l'exact opposé nous avons le pattern _database per service_ dans lequel les instances de chaque service ont à disposition une base de données dédié, inaccessible par d'autres services. Ce découplage entre les services permet d'éviter de surcharger une seule base de données et donc réduit les latences de chaque service. De plus cela permet d'avoir une application Polyglotte, c'est à dire que grâce à cette separation des services vis à vis de leurs données, nous pourrons avoir des services utilisants différents SGBD en fonction de nos besoins.
+
+Au vu des avantages du pattern _database per service_, nous allons l'implémenter dans notre architecture, à la seule différence que nos services seront reliés à des clusters de base de données, ce qui permettra de répartir la charge et d'avoir des données cohérentes.
+
+.Database per service pattern
+image::{img}/database-per-service.png["Pattern database per service"]
+
+
+// WIP 🚧
+// trouver un moyen de permettre les jointures (si nécessaire)
+// trouver un découpage des données
+
+=== SGBD utilisés
+
+// cassandra ?
+
+=== Problématiques de High Availability
+
+// fragmentation verticale et horizontale
+
+
 <<<
 == Q8: Comment ajouter une application mobile dans le système
 
