@@ -440,7 +440,6 @@ En considérant ces users stories on peut en déduire ces quartiers fonctionnels
 . Authentification/Authorisation : permet à l'utilisateur de s'inscrire et de s'identifier sur la plateforme. Vérifie les droits de l'utilisateur sur une ressource.
 . Gestion des utilisateurs : permet la gestion des utilisateurs.
 . Edition de modules : donne la possibilité d'éditer et de visualiser des modules ainsi que leurs contenus et composants.
-. Gestion des évaluations : donne la possibilité de la gestion des évaluations et des tests.
 . Envoi de mail : envoie des mail aux utilisateurs.
 . Gestion de campagne : donne la possibilité de la gestion des campagnes de tests.
 . Gestion des runners : permet de lancer des runners afin d'éxécuter du code.
@@ -662,11 +661,64 @@ image::{img}/database-per-service.png["Pattern database per service"]
 
 === SGBD utilisés
 
-// cassandra ?
 
-=== Problématiques de High Availability
+Nos services utiliserons différents types de base de données en fonctions de nos services:
+
+* [.underline]#Gestion des utilisateurs :# Relationelle. Cette base de données stockera les utilisaturs, que leurs adresses email, leurs paramètres ainsi que les transactions effectuées en Polypoints. Nous voulons nous assurer que les données soient ACID car les informations stockées (nottament les adresses mails, les mots de passe ou encore les items achetés) sont assez importantes pour éxiger une cohérence forte. 
+
+* [.underline]#Edition de modules :# Documentaire. Les modules, composants, validateurs et composants ont été désignés pour être des éléments centraux et réutilisable de Polycode remplissent de nombreuses fonctions en effet ils sont utilisés dans le cadre des exercices, des évaluations et dans les campagnes de test. Cette variété implique nécéssairement des schémas qui vont varier. Les bases de données documentaires sont adaptées à ce genre de cas de part l'abscence de schéma précis prédéfini.
+
+* [.underline]#Gestion de campagne de tests:# Relationelle. Les campagnes de tests sont des structures de données auquelles sont rattachées les candidats ainsi que des tags. Nous souhaitons des données les plus cohérentes car il serait malheureux que des utilisateurs ne soint pas reliés à une campagne à cause d'un manque de cohérence.
+
+[source, yaml]
+....
+## Campaign
+- id: `uuid`
+- name: `string`
+- description: `string`
+- testId: `uuid`
+- creatorId: `uuid`
+
+# ...
+
+## Candidate
+- id: `uuid`
+- campaignId: `uuid`
+- userId: `uuid`
+- status: `string{Confirmation Pending, Confirmed, Declined, Cancelled, Test Sent, Test Opened, Test In Process, Test Finished}`
+- startedAt: `Date`
+- email: `string`
+- linkCode: `uuid`
+- linkExpiration: `Date`
+....
+
+Pour les bases de données relationnelles nous utiliserons PostgresSQL. En effet ce dernier comparé à d'autres SGBD s'est imposé par ses nombreuses fonctionnalités et ses languages supportés malgré le fait qu'elle ne soit pas la plus rapide.
+Cependent le réel intérêt de postgres c'est sa fiabilité quant à l'écxécution des transactions. En effet PostgreSQL tient un Write Ahead LOG (WAL), soit des logs écrits avant les transactions, ce qui permet de les re-éxécuter si la transaction s'arrête inopinément comme par exemple dans le cas d'une panne. Ce journal peut être envoyé à d'autres instances pour former un cluster, le transfert peut se faire en streaming ou via FTP pour privilégier soit respectivement pour une réplication asynchone ou une réplication synchrone.
+
+Dans un cluster postgres nous avons deux types de noeuds: les noeuds maîtres qui se chargent des opérations d'écriture faisant preuve de source de vérité, et les noeuds esclave qui eux se contentent de copier les données des maîtres afin d'être opérationnels pour les opérations de lecture.
+
+.Exemple de cluster Postgres
+image::{img}/pg_cluster.png["Cluster PostgreSQL"]
+
+Pour ce qui est de l'organisation du cluster nous avons deux choix: 
+
+* Avoir plusieurs noeud maîtres, ce qui permet une plus grande disponibilité et une bonne tolérance aux pannes quand à l'écriture des données en effet si un des noeuds maîtres tombe en panne, un autre peut prendre la relève. Cependant la présence de multiple sources de vérité peut amener à des conflits qui doivent être résolus.
+
+* Avoir un seul noeud maître. Cette approche propose l'exact inverse de l'approche multi-maître: à savoir une abscence de conflits mais une moins bonne disponibilité.
+
+Nous souhaitons à tout prix avoir des bases de données hautement disponibles mais avec les données les plus cohérentes possibles. Nous allons donc répondre au premier besoin avec un cluster multi-maître, et au second point en utilisant le streaming du WAL, afin que les données soient mises à jour le plus fréquemment possible pour éviter des conflits.
+
+
+// MongoDB, couchbase,  
+
+Pour ce qui est des bases de données orientée documents 2 noms sont ressortis pendant mes recherches: CouchBase et MongoDB. Tous deux sont des bases de données orientées document très similaires mais ont quand même beaucoup de différences.
+
+//Par exemple Couchbase permet, contrairement à MongoDB, de stocker ses documents dans des _buckets_ qui permettent de stocker ses documents en mémoire et sur disque.
+
+//=== Fragmentation des données ?
 
 // fragmentation verticale et horizontale
+// internationalisation
 
 
 <<<
