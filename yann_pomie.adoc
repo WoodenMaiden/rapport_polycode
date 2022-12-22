@@ -647,20 +647,14 @@ Cependant ce choix de design n'est adapté qu'à des architectures monolithiques
 .Shared database pattern
 image::{img}/shared-database.png["Pattern shared database"]
 
-À l'exact opposé nous avons le pattern _database per service_ dans lequel les instances de chaque service ont à disposition une base de données dédié, inaccessible par d'autres services. Ce découplage entre les services permet d'éviter de surcharger une seule base de données et donc réduit les latences de chaque service. De plus cela permet d'avoir une application Polyglotte, c'est à dire que grâce à cette separation des services vis à vis de leurs données, nous pourrons avoir des services utilisants différents SGBD en fonction de nos besoins.
+À l'exact opposé nous avons le pattern _database per service_ dans lequel les instances de chaque service ont à disposition une base de données dédié, inaccessible par d'autres services. Ce découplage entre les services permet d'éviter de surcharger une seule base de données et donc réduit les latences de chaque service. De plus cela permet d'avoir une application Polyglotte, c'est à dire que grâce à cette separation des services vis à vis de leurs données, nous pourrons avoir des services utilisants différents SGBD en fonction de nos besoins. 
 
 Au vu des avantages du pattern _database per service_, nous allons l'implémenter dans notre architecture, à la seule différence que nos services seront reliés à des clusters de base de données, ce qui permettra de répartir la charge et d'avoir des données cohérentes.
 
 .Database per service pattern
 image::{img}/database-per-service.png["Pattern database per service"]
 
-
-// WIP 🚧
-// trouver un moyen de permettre les jointures (si nécessaire)
-// trouver un découpage des données
-
 === SGBD utilisés
-
 
 Nos services utiliserons différents types de base de données en fonctions de nos services:
 
@@ -709,17 +703,41 @@ Pour ce qui est de l'organisation du cluster nous avons deux choix:
 Nous souhaitons à tout prix avoir des bases de données hautement disponibles mais avec les données les plus cohérentes possibles. Nous allons donc répondre au premier besoin avec un cluster multi-maître, et au second point en utilisant le streaming du WAL, afin que les données soient mises à jour le plus fréquemment possible pour éviter des conflits.
 
 
-// MongoDB, couchbase,  
+Alternativement, il a été envisagé d'utiliser Apache Cassandra, une base de données orientée colonnes, souvent utilisée pour rapidement stocker de grands volumes de données, en effet chaque noeud d'un Ring est capable de contenir juqu'à plus de 1 Teraoctet de données et faire énormément d'écritures par seconde. Néanmoins, au delà du fait Cassandra n'est pas une base de données _ACID compliant_ de part l'abscence de transactions et de transactions, il y a aussi une bascence de jointure ce qui implique donc un refactoring de nos données mais aussi des données dupliquées pour chacune de nos relations n-aires ce qui êut être compliqué à gérer. Nous n'avons donc pas gardé cette solution.
 
-Pour ce qui est des bases de données orientée documents 2 noms sont ressortis pendant mes recherches: CouchBase et MongoDB. Tous deux sont des bases de données orientées document très similaires mais ont quand même beaucoup de différences.
 
-//Par exemple Couchbase permet, contrairement à MongoDB, de stocker ses documents dans des _buckets_ qui permettent de stocker ses documents en mémoire et sur disque.
+Pour ce qui est des bases de données orientée documents 3 noms sont ressortis pendant mes recherches: CouchDB, CouchBase et MongoDB. Tous deux sont des bases de données orientées document très similaires mais ont quand même beaucoup de différences.
 
-//=== Fragmentation des données ?
+CouchDB est un projet de la fondation Apache qui vise à fournir une base de données orientée document, vouée à être acessible et manipulable via une API REST mais aussi à être ACID. Malgré cet avantage il y a des inconvéniants majeurs comme le fait que les données soient stockées en format JSON (JavaScript Object Notation) qui est un format lourd, le fait que ce ne soit pas stocké en mémoire, l'abscence de transactions la latence observée sur les grands sets de données. Nous rejeterons donc ce SGBD pour ces raisons.
 
-// fragmentation verticale et horizontale
-// internationalisation
+Pour pallier à une partie de ces problèmes il existe Couchbase, un SGBD créé par la fusion de CouchOne, une base de données basée la base de données orientée document couchDB, et de membase une base de donnée clé-valeur stockée en mémoire. Elle a la particulité de stocker ses documents sur disque, mais aussi de placer les plus récents dans la mémoire RAM.
 
+
+La solution pour laquelle nous avions optée dans les précédentes versions de Polycode est MongoDB. Il s'agit d'un SGBD orienté document dont la princiale particularité est que le stockage des données est en BSON, qui un format de données binaire qui permet de stocker des données JSON de manière plus compacte.
+
+MongoDB et couchbase ayant beaucoup de points communs nous allons les comparer dans le tableau suivant:
+
+[cols="h,2,2"]
+|===
+||MongoDB|CouchBase
+
+|Indexage
+|Indexage par arbre binaire. Temps moyen `_O(log n)_`, temps dans le pire des cas `_O(log n)_`
+|Indexage par skip list. Temps moyen `_O(log n)_`, temps dans le pire des cas `_O(n)_`
+
+|Performances
+|Performances constantes peut importe la taille du cluster
+|Performances limitées dans un petit cluster mais augmentent rapidement avec la taille du cluster
+
+|Stockage des données
+|Stockage sur disuqe avec le format BSON
+|Les documents les plus récents ont droit à une copie en mémoire, les documents sont stockés dans des _virtuals Buckets_ qui sont copiés sur plusieurs noeuds d'un cluster
+|===
+
+.Comparaison entre CouchBase MongoDB et Cassandra
+image::{img}/comparison_CB_Mongo.png["Comparaison entre CouchBase MongoDB et Cassandra"]
+
+Concrètement couchbase est plus appropriée dans des environnements de grande taille, tandis que MongoDB est plus Polyvalent. Nous avons donc opté pour MongoDB de part cette polyvalence.
 
 <<<
 == Q8: Comment ajouter une application mobile dans le système
