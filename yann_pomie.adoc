@@ -4,8 +4,11 @@ v0.0.1, 02-11-2022
 :toc:
 :homepage: https://polycode.do-2021.fr/
 :img: ./images
+:imgcode: {img}/code_editor
 :source-highlighter: highlight.js
 :sectanchors: true
+:figmalink: https://www.figma.com/file/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?t=dm0CmVkwWiQZ0r3R-1 
+:navlink: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=504%3A572&scaling=scale-down&page-id=0%3A1&starting-point-node-id=504%3A572
 
 <<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
@@ -449,7 +452,7 @@ image::{img}/q1_architecture.png["Architecture de polycode"]
 
 === Justification de l'architecture
 
-Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service nottament au niveau des canneaux de communications, en effet on peut remarquer que peu de services comminiquent entre eux, hormis avec Keycloak qui est crucialpour l'idententification et l'autorisation (cf. à la question 2). Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance générale et de faciliter la maintenance.
+Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service notament au niveau des canneaux de communications, en effet on peut remarquer que peu de services comminiquent entre eux, hormis avec Keycloak qui est crucialpour l'idententification et l'autorisation (cf. à la question 2). Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance générale et de faciliter la maintenance.
 
 Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais en cas de panne de toutes les instances keycloak, les utilisateurs ne pourront pas interagir avec l'application.
 
@@ -658,7 +661,7 @@ image::{img}/database-per-service.png["Pattern database per service"]
 
 Nos services utiliserons différents types de base de données en fonctions de nos services:
 
-* [.underline]#Gestion des utilisateurs :# Relationelle. Cette base de données stockera les utilisaturs, que leurs adresses email, leurs paramètres ainsi que les transactions effectuées en Polypoints. Nous voulons nous assurer que les données soient ACID car les informations stockées (nottament les adresses mails, les mots de passe ou encore les items achetés) sont assez importantes pour éxiger une cohérence forte. 
+* [.underline]#Gestion des utilisateurs :# Relationelle. Cette base de données stockera les utilisaturs, que leurs adresses email, leurs paramètres ainsi que les transactions effectuées en Polypoints. Nous voulons nous assurer que les données soient ACID car les informations stockées (notament les adresses mails, les mots de passe ou encore les items achetés) sont assez importantes pour éxiger une cohérence forte. 
 
 * [.underline]#Edition de modules :# Documentaire. Les modules, composants, validateurs et composants ont été désignés pour être des éléments centraux et réutilisable de Polycode remplissent de nombreuses fonctions en effet ils sont utilisés dans le cadre des exercices, des évaluations et dans les campagnes de test. Cette variété implique nécéssairement des schémas qui vont varier. Les bases de données documentaires sont adaptées à ce genre de cas de part l'abscence de schéma précis prédéfini.
 
@@ -742,8 +745,57 @@ Concrètement couchbase est plus appropriée dans des environnements de grande t
 <<<
 == Q8: Comment ajouter une application mobile dans le système
 
+=== Fonctionalités
+
+Dans le cadre d'une application mobile intégrée à Polycode, nous souhaiterions proposer une expérience la plus proche possible que ce que l'utilisateur peut avoir sur un ordinateur, tout en l'adaptant le plus possible au support Android.
+
+C'est autour de cette ligne directrice que nous avons défini les fonctionnalités que nous souhaiterions implémenter dans notre application mobile.
+
+Premièrement des fonctionnalités hors ligne seront proposées: 
+
+* Les informations de l'utilisateur notament le nom d'utilisateur, ses adresses email, son nombre de polypoint, ses équipes et son rang seront stockées en local et synchronisées avec le serveur lorsqu'une connexion internet sera disponible. 
+* À chaque connexion à internet l'application va garder en cache une partie des modules et des contenus chargés afin de pouvoir les lire et de les compléter hors ligne.
+* Le code écrit dans un éditeur de code par l'utilisateur sera stocké en local, afin d'être modifié même hors ligne.
+* Un utilisateur pourra soumettre du code et des réponses aux exercices même hors ligne, l'application s'occupera d'envoyer les données lorsqu'une connexion internet sera disponible et notiefira l'utilisateur de ses résultats.
+
+Comme sous entendu ci-dessus nous autorisons l'utilisateur à répondre aux contenus et nottaments ceux de type éditeur de code sur téléphone. Pour faciliter la saisie de code, il sera mis en place un éditeur de code avec coloration syntaxique, autocomplétion ainsi qu'une barre horizontale placée au dessus du clavier de l'utilisateur, sur laquelle sera placée des characatères spéciaux fréquemment utilisés dans le language de programmation contenu dans l'éditeur. En cliquant sur ses caractères spéciaux, ils seront automatiquement ajoutés à la position du curseur dans l'éditeur pour que l'utilisateur n'aie pas a naviguer dans les symboles de son clavier, tout comme le shell pour Android Termux.
+
+.Editeur de code sans focus du clavier
+image:{imgcode}/editor.png["Editeur de code sans focus du clavier"]
+
+
+.Editeur de code avec focus du clavier
+image:{imgcode}/writing.png["Editeur de code avec focus du clavier"]
+
+Cependant cette fonctionnalité ne sera pas disponible pour des questions de lisibilité et de confort d'utilisation. Elle sera donc désactivée si l'application mobile juge que votre écran est trop petit, cet inconfort pouvant être considéré comme un désanvantage comparé à un ordinateur, les utilisateurs  ne pourront pas participer aux campagnes de tests via l'application mobile par soucis d'égalité.
+
+
+.Message d'erreur en cas d'écran trop petit
+image:{imgcode}/too_small.png["Message d'erreur en cas d'écran trop petit"]
+
+.Message d'erreur en cas d'écran trop petit
+image:{imgcode}/assessment.png["Message d'erreur en cas d'écran trop petit"]
+
+=== Mockup visuels
+
+Un mockup UI a été réalisé avec Figma afin de visualiser l'application mobile dans son ensemple. Un aperçu est disponible à {figmalink}[cette adresse], vous pouvez naviguer dans le mockup grâce à {navlink}[ce lien].
+
+=== Flows de fonctionnement
+
+=== API
+
+=== Authentification
+
 <<<
 == Q9: Comment gérer les problématiques de sécurité
+
+=== Sécurisation du réseau
+
+=== Gestion des secrets
+
+=== Gestions des volumes
+
+=== Autres protections
 
 <<<
 == Q10: Comment intégrer les applications UI?
