@@ -3,12 +3,27 @@ Yann POMIE <yann.pomie@etu.umontpellier.fr>
 v0.0.1, 02-11-2022
 :toc:
 :homepage: https://polycode.do-2021.fr/
-:img: ./images
-:imgcode: {img}/code_editor
 :source-highlighter: highlight.js
 :sectanchors: true
+:cache-uri: true
+:allow-uri-read: true
+
+:img: ./images
+:imgcode: {img}/code_editor
 :figmalink: https://www.figma.com/file/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?t=dm0CmVkwWiQZ0r3R-1 
 :navlink: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=504%3A572&scaling=scale-down&page-id=0%3A1&starting-point-node-id=504%3A572
+
+:profile-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=16%3A2075&scaling=scale-down&page-id=0%3A1&starting-point-node-id=16%3A2075&show-proto-sidebar=1
+:team-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=603%3A571&scaling=scale-down&page-id=0%3A1&starting-point-node-id=603%3A571&show-proto-sidebar=1
+:module-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=614%3A1098&scaling=scale-down&page-id=0%3A1&starting-point-node-id=614%3A1098&show-proto-sidebar=1
+:search-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=644%3A1153&scaling=scale-down&page-id=0%3A1&starting-point-node-id=644%3A1153&show-proto-sidebar=1
+:404-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=644%3A1268&scaling=scale-down&page-id=0%3A1&starting-point-node-id=644%3A1268&show-proto-sidebar=1
+:assessment-flow: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=644%3A1304&scaling=scale-down&page-id=0%3A1&starting-point-node-id=644%3A1304&show-proto-sidebar=1
+
+:i: includes
+:swagger-file: {i}/swagger.html
+:swagger-url: https://woodenmaiden.github.io/rapport_polycode_swagger
+
 
 <<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
@@ -745,7 +760,7 @@ Concrètement couchbase est plus appropriée dans des environnements de grande t
 <<<
 == Q8: Comment ajouter une application mobile dans le système
 
-=== Fonctionalités
+=== Fonctionalités et mockup visuels
 
 Dans le cadre d'une application mobile intégrée à Polycode, nous souhaiterions proposer une expérience la plus proche possible que ce que l'utilisateur peut avoir sur un ordinateur, tout en l'adaptant le plus possible au support Android.
 
@@ -768,23 +783,52 @@ image:{imgcode}/editor.png["Editeur de code sans focus du clavier"]
 image:{imgcode}/writing.png["Editeur de code avec focus du clavier"]
 
 Cependant cette fonctionnalité ne sera pas disponible pour des questions de lisibilité et de confort d'utilisation. Elle sera donc désactivée si l'application mobile juge que votre écran est trop petit, cet inconfort pouvant être considéré comme un désanvantage comparé à un ordinateur, les utilisateurs  ne pourront pas participer aux campagnes de tests via l'application mobile par soucis d'égalité.
+Ce problème de visibilité nous contraint aussi à restreindre les opération CRUD de module et de contenu ainsi que d'empêcher l'utilisation des outils d'administration.
 
 
 .Message d'erreur en cas d'écran trop petit
 image:{imgcode}/too_small.png["Message d'erreur en cas d'écran trop petit"]
 
-.Message d'erreur en cas d'écran trop petit
-image:{imgcode}/assessment.png["Message d'erreur en cas d'écran trop petit"]
-
-=== Mockup visuels
+.Message d'erreur en cas d'accès à un test
+image:{imgcode}/assessment.png["Message d'erreur en cas d'accès à un test"]
 
 Un mockup UI a été réalisé avec Figma afin de visualiser l'application mobile dans son ensemple. Un aperçu est disponible à {figmalink}[cette adresse], vous pouvez naviguer dans le mockup grâce à {navlink}[ce lien].
 
 === Flows de fonctionnement
 
+Il y a 5 flows principaux dans l'application mobile:
+
+* {navlink}[L'authentification et la création de compte]
+* {profile-flow}[La gestion de compte]
+* {module-flow}[La navigation dans les modules et les contenus]
+
+* {team-flow}[La gestion d'équipe]
+* {search-flow}[Recherche de contenus et modules]
+
+Nous pourrions définirs deux flows supplémentaires, du au fait que nous pourrions ouvrir l'application à partir d'un lien:
+
+* {404-flow}[Ouverture d'un lien n'xistant pas (erreur 404)]
+* {assessment-flow}[Ouverture d'un lien référencant un test qui pour rappel est interdit aux utilisateurs de l'application mobile]
+
 === API
 
+L'application mobile comuniquera avec notre architecture grâce à une API Rest. Nous aurions pu privilégier GraphQL, un langage de requête orienté client, dans lequel le client formule auprès d'un serveur la forme de sa réponse. Notre application mobile n'étant pas orienté autour de la consommation de données, mais plutôt de l'envoi de données, nous avons préféré utiliser une API Rest, de plus le choix de l'API REST permet de mettre en cache les réponses grâce à l'en-tête HTTP ``Headers``. 
+
+Comme vous pourrez le voir sur la page Swagger de notre API <<api_swagger>> que l'API consiste en l'API de la webapp privée de Routes ``PATCH``, ``PUT`` et ``DELETE`` ces dernières étant des routes modifiant ou supprimant des ressources.
+
+ifdef::backend-html5,backend-docbook5[]
+Voici un aperçu de notre API Rest:
+
+++++
+include::{swagger-file}["Swagger"]
+++++
+endif::[]
+
+
 === Authentification
+
+// auth code flow avec PKCE 
+
 
 <<<
 == Q9: Comment gérer les problématiques de sécurité
@@ -807,3 +851,4 @@ Un mockup UI a été réalisé avec Figma afin de visualiser l'application mobil
 * [[[poc_q3_ws]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-ws
 * [[[poc_q3_http]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-http-async
 * [[[rfc6202]]] https://www.rfc-editor.org/rfc/rfc6202#section-2.2
+* [[[api_swagger]]] {swagger-url}
