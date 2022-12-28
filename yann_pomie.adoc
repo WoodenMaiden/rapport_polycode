@@ -1,6 +1,7 @@
+:version: unknown
 = Document d'architecture technique
 Yann POMIE <yann.pomie@etu.umontpellier.fr>
-v0.0.1, 02-11-2022
+commit {version}, 02-11-2022
 :toc:
 :homepage: https://polycode.do-2021.fr/
 :source-highlighter: highlight.js
