@@ -836,11 +836,49 @@ endif::[]
 
 === Sécurisation du réseau
 
+La première des choses à faire dans le cadre de la sécurisation du réseau est de mettre en place un certificat TLS aussi bien pour sécuriser le traffic venant des utilisateurs mais aussi pour sécuriser le traffic à l'intérieur de notre architecture, car si un acteur malveillant parvient à se placer dans notre architecture il pourrait intercepter des données sensibles, ou ce que l'on appelle plus communément une attaque _man in the middle_.
+
+Cependant pour assurrer une meilleure sécurité nous pouvons implémenter un mTLS (multiple TLS), CloudFlare définit le mTLS comme suit dans un article <<cloudflare>>:
+
+[quote,Cloudflare,Qu'est-ce que le TLS mutuel (mTLS) ?]
+Mutual TLS, ou mTLS en abrégé, est une méthode d'authentification mutuelle. mTLS garantit que les parties à chaque extrémité d'une connexion réseau sont bien celles qu'elles prétendent être en vérifiant qu'elles possèdent toutes deux la bonne clé privée. Les informations contenues dans leurs certificats TLS respectifs fournissent une vérification supplémentaire.
+mTLS est souvent utilisé dans un cadre de sécurité Zero Trust pour vérifier les utilisateurs, les appareils et les serveurs au sein d'une organisation. Il peut également contribuer à sécuriser les API.
+
+.Schématisation de mTLS
+image::{img}/mTLS.png["Schématisation de mTLS"]
+
+Selon ce même article <<cloudflare>>, le mTLS répond à 5 types d'attaque:
+
+* Les attaques _man in the middle_.
+* Les usurpations d'identité.
+* Les attaques par brute force, qui nécéssiteront encore plus d'essais.
+* Le phishing, un attaquant à besoin d'une clé privée et d'un certificat.
+* Requêtes venant d'API malveillantes.
+
+En plus de chiffrer nos données envoyées sur le réseau, il faut se charger de vérifier l'intégrité des données si jamais la protection par mTLS est compromise. Pour cela nous allons utiliser des JSON Web Tokens (JWT) qui sont des tokens contenant les données envoyées ainsi qu'une signature permettant de vérifier l'intégrité des données qui consiste en un hachage des données et d'une valeur secrète.
+
+image::{img}/JWT.png["Schématisation de JWT"]
+
+Même si un acteur malveillant venait à modifier les données de nos requêtes (en rouge et rose ci dessus) et à les envoyer, la signature (en bleu) ne serait pas correcte car l'acteur ne connait pas la valeur secrète, nécessaire au calcul de la signature. 
+
 === Gestion des secrets
+
+Dans notre applications nous aurons de nombreuses variables que nous souhaiterons garder secrètes, comme par exemple les secrets JWT ou encore les identifiantrs pour nos bases de données, pour cela nous allons utiliser un outil de gestion de secrets comme Vault.  
+
+// 🚧 WIP 
 
 === Gestions des volumes
 
 === Autres protections
+
+==== Protection contre les attaques CSRF
+
+
+==== Protection contre les attaques DDoS
+
+
+Nous avons implémenté toutes ces protections dans un POC que vous pourrez retrouver sur GitHub <<poc_q9>>.
+
 
 <<<
 == Q10: Comment intégrer les applications UI?
@@ -853,3 +891,5 @@ endif::[]
 * [[[poc_q3_http]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-http-async
 * [[[rfc6202]]] https://www.rfc-editor.org/rfc/rfc6202#section-2.2
 * [[[api_swagger]]] {swagger-url}
+* [[[cloudflare]]] https://www.cloudflare.com/fr-fr/learning/access-management/what-is-mutual-tls/
+* [[[poc_q9]]] https://github.com/WoodenMaiden/poc9_polycode
