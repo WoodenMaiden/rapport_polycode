@@ -70,7 +70,7 @@ Voici les définitions du vocabulaire métier que vous serez succesptible de tro
 
 |Utilisateur
 |Changer mon nom, mon mot de passe, mon language de programmation et ma bio
-|Mes informations personelles soient à jour
+|Mes informations personelles soient à jourwzJB7BBo4W9uUjm+rBMS3H4ZoDTE2dM2A+JbfE515doK
 
 |Utilisateur 
 |Delete my account 
@@ -722,7 +722,7 @@ Pour ce qui est de l'organisation du cluster nous avons deux choix:
 Nous souhaitons à tout prix avoir des bases de données hautement disponibles mais avec les données les plus cohérentes possibles. Nous allons donc répondre au premier besoin avec un cluster multi-maître, et au second point en utilisant le streaming du WAL, afin que les données soient mises à jour le plus fréquemment possible pour éviter des conflits.
 
 
-Alternativement, il a été envisagé d'utiliser Apache Cassandra, une base de données orientée colonnes, souvent utilisée pour rapidement stocker de grands volumes de données, en effet chaque noeud d'un Ring est capable de contenir juqu'à plus de 1 Teraoctet de données et faire énormément d'écritures par seconde. Néanmoins, au delà du fait Cassandra n'est pas une base de données _ACID compliant_ de part l'abscence de transactions et de transactions, il y a aussi une bascence de jointure ce qui implique donc un refactoring de nos données mais aussi des données dupliquées pour chacune de nos relations n-aires ce qui êut être compliqué à gérer. Nous n'avons donc pas gardé cette solution.
+Alternativement, il a été envisagé d'utiliser Apache Cassandra, une base de données orientée colonnes, souvent utilisée pour rapidement stocker de grands volumes de données, en effet chaque noeud d'un Ring est capable de contenir juqu'à plus de 1 Teraoctet de données et faire énormément d'écritures par seconde. Néanmoins, au delà du fait Cassandra n'est pas une base de données _ACID compliant_ de part l'abscence de transactions et de transactions, il y a aussi une bascence de jointure ce qui implique donc un refactoring de nos données mais aussi des données dupliquées pour chacune de nos relations n-aires ce qui peut être compliqué à gérer. Nous n'avons donc pas gardé cette solution.
 
 
 Pour ce qui est des bases de données orientée documents 3 noms sont ressortis pendant mes recherches: CouchDB, CouchBase et MongoDB. Tous deux sont des bases de données orientées document très similaires mais ont quand même beaucoup de différences.
@@ -749,7 +749,7 @@ MongoDB et couchbase ayant beaucoup de points communs nous allons les comparer d
 |Performances limitées dans un petit cluster mais augmentent rapidement avec la taille du cluster
 
 |Stockage des données
-|Stockage sur disuqe avec le format BSON
+|Stockage sur disque avec le format BSON
 |Les documents les plus récents ont droit à une copie en mémoire, les documents sont stockés dans des _virtuals Buckets_ qui sont copiés sur plusieurs noeuds d'un cluster
 |===
 
@@ -836,7 +836,11 @@ endif::[]
 
 === Sécurisation du réseau
 
-La première des choses à faire dans le cadre de la sécurisation du réseau est de mettre en place un certificat TLS aussi bien pour sécuriser le traffic venant des utilisateurs mais aussi pour sécuriser le traffic à l'intérieur de notre architecture, car si un acteur malveillant parvient à se placer dans notre architecture il pourrait intercepter des données sensibles, ou ce que l'on appelle plus communément une attaque _man in the middle_.
+Pour sécuriser le réseau de notre application nous allons mettre en place une architecture _Zero Trust_, architecture dans laquelle chaque communication entre service est prédéfinie, authentifiée et sécurisée.
+
+premièrement nous allons pouvoir prédéfinir les comminications inter-service un grâce au système intentions de Consul. Ce système permet d'interdire de base tous les inter-connections de nos services dans le cluster, cette approche de _white listing_ empêchera à un acteur ayant accès au cluster de crééer des pods potentiellement dangereux et de les connecter à nos autres services.
+
+La seconde des choses à faire dans le cadre de la sécurisation du réseau est de mettre en place un certificat TLS aussi bien pour sécuriser le traffic venant des utilisateurs mais aussi pour sécuriser le traffic à l'intérieur de notre architecture, car si un acteur malveillant parvient à se placer dans notre architecture il pourrait intercepter des données sensibles, ou ce que l'on appelle plus communément une attaque _man in the middle_.
 
 Cependant pour assurrer une meilleure sécurité nous pouvons implémenter un mTLS (multiple TLS), CloudFlare définit le mTLS comme suit dans un article <<cloudflare>>:
 
@@ -861,23 +865,49 @@ image::{img}/JWT.png["Schématisation de JWT"]
 
 Même si un acteur malveillant venait à modifier les données de nos requêtes (en rouge et rose ci dessus) et à les envoyer, la signature (en bleu) ne serait pas correcte car l'acteur ne connait pas la valeur secrète, nécessaire au calcul de la signature. 
 
+Une partie ces protections ont été implémentées dans un POC que vous pourrez retrouver sur GitHub <<poc_q9>>.
+
 === Gestion des secrets
 
-Dans notre applications nous aurons de nombreuses variables que nous souhaiterons garder secrètes, comme par exemple les secrets JWT ou encore les identifiantrs pour nos bases de données, pour cela nous allons utiliser un outil de gestion de secrets comme Vault.  
+Dans notre applications nous aurons de nombreuses variables que nous souhaiterons garder secrètes, comme par exemple les secrets JWT ou encore les identifiants pour nos bases de données. Kubernetes fournit de base des objets Secrets dans son API pour stocker ces valeurs et les sécuriser, pourtant il s'agit de la pire des solutions car les valeurs sont simplement encodés en base64 acessible par n'importe qui ayant un accès au cluster, signifiant que quiconque de mal intentionné s'ayant procuré des accès au cluster aura accès à ces valeurs. Nous allons donc utiliser un gestionnaire de secrets, permettant de chiffrer les secrets et de restreindre l'accès à ces données.
 
-// 🚧 WIP 
+.Fonctionnement global d'un gestionnaire de secrets
+image::{img}/secret_manager.png["Schématisation de secrets"]
 
-=== Gestions des volumes
+Lors de recherches sur le sujet les trois noms qui sont le plus ressortis sont Hashicorp Vault, Google Cloud KMS et AWS Secrets Manager. Cependant nous allons choisir Vault car il s'agit de la solution offrant le plus de fonctionnalités intéréssantes possibles: 
 
-=== Autres protections
+* Vault est doté d'un moteur PKI permettant alors de génerer des certificats X.509 à la demande, ce qui peut être utilisé dans les cas où nous avons besoins de systèmes de clés publiques/privés. Nous pouvons prendre l'exemple du mTLS où Vault peut servir d'authorité de certificats (Ce qui est totalement possible comme le montre un tutoriel sur leur site <<vault_ca>>).
 
-==== Protection contre les attaques CSRF
+* Il permet de générer des secrets dynamiques. C'est à dire que Vault va, à intervalles réguliers, changer certains secrets dont il à la charge tel que
+les identifiants des bases de données (changements qu'il va d'ailleur faire appliquer aux SGBD), ce mechanisme sert à contrer les attaques par brute force et à réduire les fenêtres d'attaques car on peut changer les identifiants très fréquemment
 
+* Vault se base sur un système de rôles et d'actions, qui refuse tout accès par défaut. Cet aspect est important quand on sait que les contrôles d'accès défaillants étaient le type de faille présentant le plus de risque dans les systèmes d'information selon le top 10 de l'OWASP en 2021 <<owasp10>>.
 
-==== Protection contre les attaques DDoS
+Ce sont les raisons pour lesquelles nous utiliserons vault pour sécuriser nos secrets, car les applications auront un accès à des secrets éphémères et régis par des rôles.
 
+Pour ce faire nous utiliseront des _Sidecar_ vaults, ce sont des conteneurs placés dans les pods de nos services qui se chargeront de récupérer les secrets auprès de Vault et de les injecter dans les conteneurs du pod.
 
-Nous avons implémenté toutes ces protections dans un POC que vous pourrez retrouver sur GitHub <<poc_q9>>.
+.Schématisation de l'injection de secrets
+image::{img}/vault-injector.png["Schématisation de l'injecteur de secrets"]
+
+=== Protection contre les attaques DDoS
+
+Une attaque par déni de service ou attaque DDoS (Distributed Denial of Service) est une cyberattaque qui repose sur un principe simple : Empêcher l'accès à un serveur en le saturant avec des flots de requêtes. Dans un des articles de Cloudflare pévoquant le sujet <<cloudflare_dns>> on peut retrouver cette analogie 
+
+[quote,CloudFlare,Qu'est-ce qu'une attaque DDoS ?]
+En généralisant, une attaque DDoS ressemble à un embouteillage inattendu qui bloque une autoroute et empêche le trafic normal d’arriver à destination.
+
+.Illustration tirée de l'article de CloudFlare sur le DDoS 
+image::{img}/ddos-attack-traffic-metaphor.png["Analogie entre le un embouteillage et une attaque DDoS"]
+
+Ce type d'attaque à beau sembler primitif, il existe différents types d'attaques DDoS qui exploitent différentes couches du modèle OSI ce qui les rend redoutables et implique la mise en place de quelques dispositifs.
+
+* Les pare feu applicatif (WAF), est une porte d'entrée vers notre application qui va se charger d'évaluer les requêtes entrentes et de les rejeter si elles représentes un danger quelconque comme une attaque DDoS ou une injection. 
+* La limitation du taux, il est possible de limiter le nombre de requêtes en parallèle, ce qui permet d'empêcher notre application de s'écrouler sous une avalange de requêtes.
+
+Une autre technique pour protéger son application d'attaques DDoS est la technique du trou noir, en cas d'attaque DDoS, tout le traffic peut être redirigé vers une autre destination. Nous n'allons pas garder cette solution car au delà de déplacer le problème autre part, l'attaque reste réussie car tous les clients illégitimes ou non n'ont pas accès à l'application.
+
+Pour appliquer ces techniques nous allons dans un premier cas, utiliser la suite de CloudFlare qui nous permettra d'appliquer un WAF devant l'entrée de notre cluster. Pour ce qui est de la limitation de taux elle peut être configurée dans Consul.   
 
 
 <<<
@@ -893,3 +923,6 @@ Nous avons implémenté toutes ces protections dans un POC que vous pourrez retr
 * [[[api_swagger]]] {swagger-url}
 * [[[cloudflare]]] https://www.cloudflare.com/fr-fr/learning/access-management/what-is-mutual-tls/
 * [[[poc_q9]]] https://github.com/WoodenMaiden/poc9_polycode
+* [[[vault_ca]]] https://developer.hashicorp.com/vault/tutorials/secrets-management/pki-engine
+* [[[owasp10]]] https://owasp.org/Top10/fr/
+* [[[cloudflare_dns]]] https://www.cloudflare.com/fr-fr/learning/ddos/what-is-a-ddos-attack/
