@@ -11,6 +11,7 @@ commit {version}, 02-11-2022
 
 :img: ./images
 :imgcode: {img}/code_editor
+:q2: {img}/q2
 :figmalink: https://www.figma.com/file/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?t=dm0CmVkwWiQZ0r3R-1 
 :navlink: https://www.figma.com/proto/iNqVl5HUfEIAcHHNQP9Ml8/Polycode-Phone-version?node-id=504%3A572&scaling=scale-down&page-id=0%3A1&starting-point-node-id=504%3A572
 
@@ -480,6 +481,58 @@ Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés
 <<<
 == Q2: Comment gérer le système d’authentification avec un OIDC?
 
+=== Mise en place de Keycloak
+
+Afin de gérer l'authentification dans notre application snous allons mettre en place un cluster Keycloak. Keycloak est un _identity provider_ OpenID Connect et SAML 2.0. Il permet de gérer les utilisateurs, les droits d'accès, les sessions, les tokens d'accès et d'autres. Dans notre cas nous allons nous contenter de l'authentification de nos utilisateurs et de leur connection.
+
+Pour ce faire nous allons utiliser les pages de connection et d'inscription et de connexion fournies par Keycloak, quand l'utilisateur voudra faire l'une de ces deux actions il sera donc redirigé vers une instance Keycloak, cette dernière s'occupant de stocker ses identifiants à la place du service d'utilisateur et donc sans passer par ce dernier. 
+
+Au delà du fait que Keycloak nous est imposé dans le cadre de la prochaine itération de Polycode, le choix cette solution est justifiée par sa polyvalence: Keycloak fonctionne avec de nombreux SGBD, il peut être manipulé via de nombreux langages grâce à une API HTTP REST, il supporte de base une dizaine _d'identity providers_ allant de Paypal à Twitter et il permet de fédérer les utilisateurs de différentes manières. Si on ajoute à cela les nombreuses autres fonctionnalités de Keycloak comme la confirmation de mail, des droits d'accès, des event listeners, etc. on peut dire que c'est une solution qui est adaptée à notre cas d'utilisation.
+
+Keycloak sera déployé sur notre cluster Kubernetes avec une règle ingress permettant de rediriger vers les pags de connection et d'inscription de Keycloak. L'intérêt de cette manoeuvre est de permettre à Keycloak de déclencher des évènements ce qui permettra à notre application de réagir à ces évènements, comme par exemple l'enregistrement via nos services, des informations de l'utilisateur tel que ses rôles, son nombre de Polypoints, etc.
+Keycloak met à disposition une librairie Java permettant d'écrire ses propres _event listeners_ afin de définir une réaction spécifique à des évènements, au vue de l'omniprésence de communication par API REST dans notre application (cf. <<_communication_inter_micro_services,Question 3: Communication Inter micro-services>>).
+
+.Illustration de la communication entre Keycloak et Polycode
+image::{img}/KC_events.png["Illustration de la communication entre Keycloak et Polycode"]
+
+Dans un premier temps un système de webhook à été envisagé. Les Webhooks sont des serveurs auquel des clients vont s'abonner afin d'être notifiés d'un évènement, à l'inverse du http polling l'initiative vient du serveur et non du client. Il était envisagé de faire un event listener qui consisterait en un serveur webhook qui notifie ses abonnés quand un utilisateur se connecte ou s'inscrit, le problème de cette manière de faire est que les servics ayant besoin de ses notifications doivent s'inscrire auprès du serveur. Serveur qui doit garder en mémoire l'adresse de ses abonnés, hors dans un système de microservices on part du principe que nos services vont continuellement s'arréter et démarrer, celà peut donc entraîner une fuite de mémoire au niveau du webhook, sa liste d'adresse ne cessant d'augmenter. 
+
+.Illustration de webhook
+image::{img}/webhooks.png["Illustration de webhook"]
+
+Pour palier à ce problème notre event listener va simplement envoyer des reqûetes HTTP vers les services qui ont besoin de ces notifications. Cela permet de ne pas avoir à s'inscrire auprès du serveur et donc de ne pas avoir à garder en mémoire l'adresse des services abonnés. De plus grâce au DNS de kubernetes on peut facilement trouver l'adresse de tous les services en fonction d'un seul nom.
+
+Vous pouvez remarquer que quite à des problèmes techniques et à un manque de temps un _proof of contept_ fonctionnel n'est pas disponible. Veuillez nous excuser pour ce manque.
+
+=== Compte vanilla
+
+La gestion de compte vanilla (compte stocké dans la base de données de Polycode) se fait via une page de connexion et d'inscription fournie par une instance Keycloak. Instance qui se chargera de la vérification des identifiants, de l'absence de doublons, de l'envoi de mail de confirmation, etc.
+
+.Inscription avec un compte vanilla
+image::{q2}/vanilla_signup.png["Inscription avec un compte vanilla"]
+
+.Connexion avec un compte vanilla
+image::{q2}/vanilla_login.png["Connnexion avec un compte vanilla"]
+
+=== LDAP
+
+Keycloak propose une option d'importation des utilisateurs, cette option permet si elle est activée de sauvegarder à intervalles régulier les utilisateurs du système LDAP dans Keycloak. Nous utiliserons cette option, car Keycloak assumera la lecture et écriture de ses données de son côté, ce qui permet de solliciter le serveur LDAP uniquement pour la vérification de mot de passe. Envoyer le moins de requêtes possibles au serveur LDAP de Polytech est important car il ne faudrait pas surcharger ce serveur utilisé par environ 1500 étudiants.
+
+.Inscription avec un compte LDAP
+image::{q2}/ldap_signup.png["Inscription avec un compte LDAP"]
+
+.Connexion avec un compte LDAP
+image::{q2}/ldap_login.png["Connexion avec un compte LDAP"]
+
+
+=== Compte Google
+
+.Inscription avec un compte Google
+image::{q2}/google_signup.png["Inscription avec un compte Google"]
+
+.Connexion avec un compte Google
+image::{q2}/google_login.png["Connexion avec un compte Google"]
+
 <<<
 == Q3: Communication Inter micro-services
 
@@ -828,7 +881,9 @@ endif::[]
 
 === Authentification
 
-// auth code flow avec PKCE 
+Concernant l'authentification de l'application mobile nous allons garder la même séquence que pour une connexion normale à savoir l'utilisation du front end servi par keycloak, ce qui implique donc l'absence des routes API pour la connexion et l'inscription dans le swagger ci-dessus.
+
+image:{q2}/vanilla_signup.png["Inscription"]
 
 
 <<<
