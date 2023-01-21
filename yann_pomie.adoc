@@ -28,10 +28,19 @@ commit {version}, 02-11-2022
 
 
 <<<
+== Introduction
+
+Polycode est un projet scolaire créé en 2022 par la promotion DevOps 2021-2022 de Polytech Montpellier, il s'agit d'une plateforme en ligne permettant à ses utilisateurs de consulter des lessons de programmation, d'écrire du code qui sera exécuté et d'être évalué sur ses compétences lors de campagnes de tests. 
+
+La première itération de cette application suivait une conception monolithique, c'est à dire que toutes les fonctionnalités du _back end_ de l'application résidaient toutes en un seul binaire, le problème de ce genre de conception est que toutes les fonctionnalites ne sont pas toutes sollicitées de la même manière ce qui entraine donc du gâchis de ressources. Il nous a donc été demandé de revoir notre conception et de la découper en micro-services pour répondre à ce problème, mais aussi de rajouter d'autres fonctionnalités à l'application tout en prenant en compte notre nouvelle architecture. Nous allons donc présenter dans ce document, notre réponse à une dizaine de questions soulevant ces problématiques.
+
+Dans un premier temps nous allons proposer une séparation de Polycode en quartiers fonctionnels, de nouveaux méchanismes d'authentification ainsi que les processus de communication inter-services utilisés. Viendront ensuite l'ajout de deux fonctionnalités supplémentaires: le traçage des logs de l'application et un moteur de recherche. Nous terminerons par divers aspects de l'organisation de notre application avec nottament l'architecture de nos runner de code, l'organisation de nos bases de données, l'ajout d'une application mobile, la sécurisation de notre application et enfin nous finirons sur l'intégration de nos applications UI. 
+
+<<<
 == Q1: En partant des pré-requis, que proposez-vous comme séparation en quartiers fonctionnels de votre application et en termes de micro-services?
 
 === Vocabulaire métier et user stories
-Suite à de nombreuses incompréhensions, nous avons redéfini une grande partie du vocabulaire métier, nous en avons aussi profité pour redéfinir nos user stories. 
+Suite à de nombreuses incompréhensions entre les différents acteurs du projet, nous avons redéfini une grande partie du vocabulaire métier, nous en avons aussi profité pour redéfinir nos user stories. 
 
 Voici les définitions du vocabulaire métier que vous serez succesptible de trouver dans nos user stories et dans le reste du document.
 
@@ -483,7 +492,7 @@ Il à aussi été envisagé de faire un service _Équipe_ et _Contenu_ séparés
 
 === Mise en place de Keycloak
 
-Afin de gérer l'authentification dans notre application snous allons mettre en place un cluster Keycloak. Keycloak est un _identity provider_ OpenID Connect et SAML 2.0. Il permet de gérer les utilisateurs, les droits d'accès, les sessions, les tokens d'accès et d'autres. Dans notre cas nous allons nous contenter de l'authentification de nos utilisateurs et de leur connection.
+Afin de gérer l'authentification dans notre application nous allons mettre en place des instances Keycloak. Keycloak est un _identity provider_ OpenID Connect et SAML 2.0. Il permet de gérer les utilisateurs, les droits d'accès, les sessions, les tokens d'accès et d'autres. Dans notre cas nous allons nous contenter de l'authentification de nos utilisateurs et de leur connection.
 
 Pour ce faire nous allons utiliser les pages de connection et d'inscription et de connexion fournies par Keycloak, quand l'utilisateur voudra faire l'une de ces deux actions il sera donc redirigé vers une instance Keycloak, cette dernière s'occupant de stocker ses identifiants à la place du service d'utilisateur et donc sans passer par ce dernier. 
 
@@ -914,6 +923,8 @@ Selon ce même article <<cloudflare>>, le mTLS répond à 5 types d'attaque:
 * Le phishing, un attaquant à besoin d'une clé privée et d'un certificat.
 * Requêtes venant d'API malveillantes.
 
+Notre service mesh HashiCorp Consul met en place un mTLS et gère les certificats TLS pour nous, il suffit de définir les intentions de communication entre nos services et consul se chargera de tout selon un article de la documentation HashiCorp <<article_consul>>.
+
 En plus de chiffrer nos données envoyées sur le réseau, il faut se charger de vérifier l'intégrité des données si jamais la protection par mTLS est compromise. Pour cela nous allons utiliser des JSON Web Tokens (JWT) qui sont des tokens contenant les données envoyées ainsi qu'une signature permettant de vérifier l'intégrité des données qui consiste en un hachage des données et d'une valeur secrète.
 
 image::{img}/JWT.png["Schématisation de JWT"]
@@ -964,7 +975,6 @@ Une autre technique pour protéger son application d'attaques DDoS est la techni
 
 Pour appliquer ces techniques nous allons dans un premier cas, utiliser la suite de CloudFlare qui nous permettra d'appliquer un WAF devant l'entrée de notre cluster. Pour ce qui est de la limitation de taux elle peut être configurée dans Consul.   
 
-
 <<<
 == Q10: Comment intégrer les applications UI?
 
@@ -981,3 +991,4 @@ Pour appliquer ces techniques nous allons dans un premier cas, utiliser la suite
 * [[[vault_ca]]] https://developer.hashicorp.com/vault/tutorials/secrets-management/pki-engine
 * [[[owasp10]]] https://owasp.org/Top10/fr/
 * [[[cloudflare_dns]]] https://www.cloudflare.com/fr-fr/learning/ddos/what-is-a-ddos-attack/
+* [[[article_consul]]] https://developer.hashicorp.com/consul/docs/connect/connect-internals
