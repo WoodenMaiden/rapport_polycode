@@ -511,7 +511,7 @@ image::{img}/webhooks.png["Illustration de webhook"]
 
 Pour palier à ce problème notre event listener va simplement envoyer des reqûetes HTTP vers les services qui ont besoin de ces notifications. Cela permet de ne pas avoir à s'inscrire auprès du serveur et donc de ne pas avoir à garder en mémoire l'adresse des services abonnés. De plus grâce au DNS de kubernetes on peut facilement trouver l'adresse de tous les services en fonction d'un seul nom.
 
-Vous pouvez remarquer que quite à des problèmes techniques et à un manque de temps un _proof of contept_ fonctionnel n'est pas disponible. Veuillez nous excuser pour ce manque.
+Vous pouvez remarquer que quite à des problèmes techniques et à un manque de temps, le _proof of contept_ <<poc2>> est incomplet et pas déployé. Veuillez nous excuser pour ce manque.
 
 === Compte vanilla
 
@@ -820,6 +820,16 @@ image::{img}/comparison_CB_Mongo.png["Comparaison entre CouchBase MongoDB et Cas
 
 Concrètement couchbase est plus appropriée dans des environnements de grande taille, tandis que MongoDB est plus Polyvalent. Nous avons donc opté pour MongoDB de part cette polyvalence.
 
+=== Schemas de données
+
+.Modèle conceptuel de données
+image::{img}/q7_mcd.png["Modèle conceptuel de données"]
+
+.Représentation des données documentaire
+image::{img}/q7_mongo.png["Représentation des données documentaire"]
+
+A noter que pour éviter de dupliquer les données dans la base documentaire, toutes les sous documents sont stockés dans leur collection correspondants et référencées par leur identifiant unique au lieu d'être inclus directement dans leur document parent.  
+
 <<<
 == Q8: Comment ajouter une application mobile dans le système
 
@@ -978,9 +988,30 @@ Pour appliquer ces techniques nous allons dans un premier cas, utiliser la suite
 <<<
 == Q10: Comment intégrer les applications UI?
 
+Comme mentionné précédemment, Polycode intègre une sous application dédiée à tester des utilisateurs au travers de campagnes de test. Afin que cette partie ainsi que les prochaines soientt bien intégrée avec le reste de l'application, nous allons les développer en micro front-end.
+
+Le site micro-frontends.org définit le micro front-end comme suit <<micro-frontends>>.
+
+[quote,Micro-frontends.org,What is a micro front-end ?]
+L'idée derrière les micro frontends est de considérer un site web ou une application web comme une composition de fonctionnalités appartenant à des équipes indépendantes. Chaque équipe a un domaine d'activité distinct ou une mission attribuée dans laquelle elle est spécialisée. Une équipe est transversale et développe ses fonctionnalités de bout en bout, de la base de données à l'interface utilisateur.
+
+Le but de cette architecture est de pouvoir développer et déployer les différentes parties de l'application indépendemment les unes des autres, contenant chacune leurs propres composants pouvant être directement récupérés et inclus par d'autres services grâce au _Server Side Include_ (SSI).
+
+.Architecture classique
+image::{img}/monolith-frontback-microservices.png["Architecture classique"]
+
+.Architecture en micro front-end
+image::{img}/micro-frontend.png["Architecture micro front-end"]
+
+Pour pouvoir servir nos composants nous pourrons utiliser NextJS qui permet de servir nos composants React en Server Side Rendering ce qui permettra à l'utilisateur d'accéder rapidement à nos composants si il souffre d'une mauvaise connexion internet.
+
+Par manque de temps et nous n'avons pas eu le temps de développer un proof of concept complet <<poc10>> pour cette question, veuillez nous excuser pour ce manque.
+
+
 <<<
 [bibliography]
 == Bibliographie/Webographie/Liens
+* [[[poc2]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc2
 * [[[poc_q3_lp]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-long-polling
 * [[[poc_q3_ws]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-ws
 * [[[poc_q3_http]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc3-http-async
@@ -992,3 +1023,4 @@ Pour appliquer ces techniques nous allons dans un premier cas, utiliser la suite
 * [[[owasp10]]] https://owasp.org/Top10/fr/
 * [[[cloudflare_dns]]] https://www.cloudflare.com/fr-fr/learning/ddos/what-is-a-ddos-attack/
 * [[[article_consul]]] https://developer.hashicorp.com/consul/docs/connect/connect-internals
+* [[[poc10]]] https://gitlab.polytech.umontpellier.fr/yann.pomie/poc10
