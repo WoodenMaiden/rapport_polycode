@@ -1,4 +1,4 @@
-:version: unknown
+:version: v1.0.0
 = Document d'architecture technique
 Yann POMIE <yann.pomie@etu.umontpellier.fr>
 commit {version}, 02-11-2022
