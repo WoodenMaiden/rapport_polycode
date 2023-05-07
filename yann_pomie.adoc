@@ -26,6 +26,15 @@ commit {version}, 02-11-2022
 :swagger-file: {i}/swagger.html
 :swagger-url: https://woodenmaiden.github.io/rapport_polycode_swagger
 
+<<<
+== Gestionnaire de versions
+
+|===
+| Version | Date | Auteur | Commentaire
+| v1.0 | 22/01/2023 | Yann POMIE | Rendu initial
+| v1.1 | 07/05/2023 | Yann POMIE | Ajout Post-Polystore: changements architecturaux dans la question 1, usage de RabbitMQ dans la question 3 (ce qui était auparavant interdit pour la V1), évocation de lambdo dans la question 6 et rajout d'une section sur l'Event Sourcing et CQRS dnas la question 7 
+|===
+
 
 <<<
 == Introduction
@@ -478,9 +487,9 @@ image::{img}/q1_architecture.png["Architecture de polycode"]
 
 === Justification de l'architecture
 
-Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service notament au niveau des canneaux de communications, en effet on peut remarquer que peu de services comminiquent entre eux, hormis avec Keycloak qui est crucialpour l'idententification et l'autorisation (cf. à la question 2). Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance générale et de faciliter la maintenance.
+Le but premier de cette organsation est de réduire au maximum les dépendances entre chaque service notament au niveau des canneaux de communications, en effet on peut remarquer que peu de services comminiquent entre eux. Le fait de limiter le nombre de cannaux de communications permet de réduire les risques de défaillance générale et de faciliter la maintenance.
 
-Le problème de ce choix technique est que l'on réduit certes les éventuelles erreurs inter-services mais en cas de panne de toutes les instances keycloak, les utilisateurs ne pourront pas interagir avec l'application.
+L'API Gateway est le point d'entrée de l'application, elle se chargera de rediriger les requêtes vers les services concernés. Elle se chargera ausi de vérifier les droits de l'utilisateur sur une ressource en interrogeant Keycloak.
 
 Vu que nous nous plaçons dans une architecture de microservices il faut partir du principe que nos services auront des réplicas qui vont crasher et dautres qui vont démarrer. Pour assurer un bon routage de nos requêtes, nous allons utiliser un service registery afin de garder en mémoire nos services encore vivants ainsi que leur adresse IP (cf. <<_enregistrement_des_runners,Question 9 - Enregistrement des runners>>).
 
@@ -498,7 +507,7 @@ Pour ce faire nous allons utiliser les pages de connection et d'inscription et d
 
 Au delà du fait que Keycloak nous est imposé dans le cadre de la prochaine itération de Polycode, le choix cette solution est justifiée par sa polyvalence: Keycloak fonctionne avec de nombreux SGBD, il peut être manipulé via de nombreux langages grâce à une API HTTP REST, il supporte de base une dizaine _d'identity providers_ allant de Paypal à Twitter et il permet de fédérer les utilisateurs de différentes manières. Si on ajoute à cela les nombreuses autres fonctionnalités de Keycloak comme la confirmation de mail, des droits d'accès, des event listeners, etc. on peut dire que c'est une solution qui est adaptée à notre cas d'utilisation.
 
-Keycloak sera déployé sur notre cluster Kubernetes avec une règle ingress permettant de rediriger vers les pags de connection et d'inscription de Keycloak. L'intérêt de cette manoeuvre est de permettre à Keycloak de déclencher des évènements ce qui permettra à notre application de réagir à ces évènements, comme par exemple l'enregistrement via nos services, des informations de l'utilisateur tel que ses rôles, son nombre de Polypoints, etc.
+Keycloak sera déployé sur notre cluster Kubernetes avec une règle ingress permettant de rediriger vers les pags de connection et d'inscription de Keycloak. L'intérêt de cette manoeuvre est de permettre à Keycloak de déclencher des évènements ce qui permettra à notre application de réagir à ces derniers, comme par exemple l'enregistrement via nos services, des informations de l'utilisateur tel que ses rôles, son nombre de Polypoints, etc.
 Keycloak met à disposition une librairie Java permettant d'écrire ses propres _event listeners_ afin de définir une réaction spécifique à des évènements, au vue de l'omniprésence de communication par API REST dans notre application (cf. <<_communication_inter_micro_services,Question 3: Communication Inter micro-services>>).
 
 .Illustration de la communication entre Keycloak et Polycode
@@ -509,9 +518,9 @@ Dans un premier temps un système de webhook à été envisagé. Les Webhooks so
 .Illustration de webhook
 image::{img}/webhooks.png["Illustration de webhook"]
 
-Pour palier à ce problème notre event listener va simplement envoyer des reqûetes HTTP vers les services qui ont besoin de ces notifications. Cela permet de ne pas avoir à s'inscrire auprès du serveur et donc de ne pas avoir à garder en mémoire l'adresse des services abonnés. De plus grâce au DNS de kubernetes on peut facilement trouver l'adresse de tous les services en fonction d'un seul nom.
+Pour palier à ce problème notre event listener va simplement envoyer des messages AMQP à un serveur RabbitMQ avec des clés de routage de la forme `<domaine>.<événement>` (par exemple `Email.send`, `User.register` etc.) que les services pourront recevoir et interpréter, ce protocole de communication est adapté car Keycloak va emmettre des évènements dont il n'attend rien en retour, ce qui permet d'éviter l'usage de HTTP et ses désavantages (cf. <<_communication_inter_micro_services,Question 3: Communication Inter micro-services>>).
 
-Vous pouvez remarquer que quite à des problèmes techniques et à un manque de temps, le _proof of contept_ <<poc2>> est incomplet et pas déployé. Veuillez nous excuser pour ce manque.
+Vous pouvez remarquer que suite à des problèmes techniques et à un manque de temps, le _proof of contept_ <<poc2>> est incomplet et pas déployé. Veuillez nous excuser pour ce manque.
 
 === Compte vanilla
 
@@ -549,8 +558,6 @@ Quand nous regardons les microservices que nous avons défini plus tôt nous pou
 
 Pour les microservices qui ne sont pas des CRUD comme le microservice d'envoi de mail, il est plus intéressant d'utiliser un protocole de communication asynchrone. En effet, si nous prenons toujours l'example de l'envoi de mail, il est inutile de faire remonter une erreur au niveau de l'API gateway si le mail n'a pas pu être envoyé, ce dernier pouvant être renvoyé, il est préférable de simplement logger l'erreur et de continuer le traitement.
 
-Dans des circonstances normale nous serions partis sur un système de message queue tel que RabbitMQ, système grâce auquel toutes les communications sont stockées dans une file d'attente permettant au destinataire de traiter les messages à son rythme et de reprendre là où il en était en cas de crash. Cependant le sujet nous interdit explicitement d'utiliser ce type de protocole. 
-
 Dans un premier temps il a été envisagé d'utiliser la technique du http long polling. Cette technique consiste à faire de longues requêtes HTTP en boucle jusqu'à ce que le serveur renvoie une réponse, ce qui permet de simuler une communication asynchrone. Dans notre cas c'est le microservice d'envoi de mail qui va faire les requêtes HTTP jusqu'à ce qu'une réponse soit reçue. Cette approche est très simple conceptuellement, dependant elle présente beaucoup trop de désavantages pour être utilisée. En effet un _proof of concept_ <<poc_q3_lp>> ainsi que le document RFC6202 "Known Issues and Best Practices for the Use of Long Polling and Streaming in Bidirectional HTTP" <<rfc6202>> publié en avril 2011, mettent en évidence de nombreux problèmes liés à cette technique dont les plus importants sont: 
 
 * Une consommation importante de ressources côté serveur, en effet le serveur doit maintenir une connection ouverte avec le client et doit traiter les requêtes HTTP même si aucune réponse n'est attendue.
@@ -563,7 +570,19 @@ Hélas cette solution admet deux gros problèmes :
 * Il est impossible de pour l'un des deux parties de savoir si l'autre est indisponible ce qui pose problème dans un environnement en picroservice où tout service peut s'arrêter à tout moment. Une implémentation pour relancer le socket s'impose donc.  
 * Les connections étant persistentes, un scaling horizontal est tout bonnement impossible, les deux parties devant absolument être les mêmes. 
 
-La solution la plus simple et posant le moins de soucis reste des appels HTTP vers une API REST que notre fil d'éxécution principal n'attendra pas, même si cette solution est moins _fault tolerant_ qu'une message queue, elle a le mérite d'être très simple à impémenter (cf. <<poc_q3_http>>), là ou du RPC nécéssiterait des fichiers de définition. De plus cela permet d'éviter de faire de nos microservice des hybrides API REST/Serveur long polling ou API REST/Serveur websocket comme vous pouvez le voir dans les premiers _proof of concept_ <<poc_q3_ws>> <<poc_q3_lp>>.
+Une solution plus simple et posant le moins de soucis reste des appels HTTP vers une API REST que notre fil d'éxécution principal n'attendra pas, même si cette solution est moins _fault tolerant_ qu'une message queue, elle a le mérite d'être très simple à impémenter (cf. <<poc_q3_http>>), là ou du RPC nécéssiterait des fichiers de définition. De plus cela permet d'éviter de faire de nos microservice des hybrides API REST/Serveur long polling ou API REST/Serveur websocket comme vous pouvez le voir dans les premiers _proof of concept_ <<poc_q3_ws>> <<poc_q3_lp>>. Cependant cette approche pose quelques problèmes, premièrement les requêtes HTTP embarquent des Headers qui peuvent s'avérer lourds et qui peuvent donc surcharger le réseau pour rien. La seconde raison est que les fonctions asynchrones sont traitées fifféremment en mémoire par les langages, par exemple NodeJS va  les placer dans une file d'attente, Java va les éxécuter dans un autre thread etc. Faire ainsi s'avère risqué si les requêtes sont nombreuses car cela va surcharger la mémoire et le processeur.
+
+An voyant les désavantages majeur de ces deux solutions il est clair que le protocole de communication en lui même doit être asynchrone et léger, ce que n'est pas HTTP. C'est donc pour cela que nous allons nous tourner vers les messages brokers. Il s'agit de serveurs utilisant un protocole qui fonctionne comme la poste: un expéditeur va envoyer un message à un message broker, ce dernier va le stocker et le transmettre à un ou plusieurs destinataires. Ici nous n'avons aucune fonction asynchrone à gérer, le message broker s'occupe de tout, de plus, les messages envoyés ne contiennent pas ou très peu d'erreurs ce qui les allège.
+
+
+Les deux message brokers les plus répandus sont RabbitMQ et apache Kafka. Bien que les deux semblent similaires sur le papier ils sont en réalité très différents.
+
+Premièrement leur manière d'envoyer les messages est différente, Kafka repose sur un simple système de _Publisher/subscriber_ alors que RabbitMQ lui dispose de différents types d'émetteurs appellés _Exchanges_ qui vont envoyer les messages à des _Queues_ en fonction de clés de routages, ce qui permet d'avoir plusieurs options a notre disposition. Pour ce qui est du stockage des messages Kafka va les stocker pour une certaine durée de temps, alors que RabbitMQ va les stocker jusqu'à ce qu'ils soient consommés, ce qui permet d'économiser de l'espace de stockage.
+
+Avec ces deux considérations ainsi que d'autres, il est plus communément acquis que Kafka sert plus pour streamer des données en temps réel alors que RabbitMQ est plus adapté pour l'envoi de messages tel que des évènements. C'est donc pour cela que nous choisirons RabbitMQ pour assurer la communication entre nos services. 
+
+.Schématisation du message broking avec RabbitMQ
+image::{img}/RabbitMQ.png["Schématisation du message broking avec RabbitMQ"]
 
 Pour illustrer notre solution faisons un diagramme de séquence en prenant l'exemple de quelqu'un s'incrivant à Polycode:
 
@@ -705,7 +724,7 @@ En plus d'une isolation du code, il faut aussi isoler le réseau pour empêcher 
 .Schématisation du service de runner
 image::{img}/q6_architecture_service.png["Architecture du runner"]
 
-L'équipe de Polycode est en ce moment même en train de développer un gestionnaire de machine virtuelle qui gèrera ces aspects d'isolation et de lancement de machines virtuelle.
+L'équipe de Polycode à déja développé une solution nommée <<lambdo>>, un runtime écrit en rust qui s'occupe de lancer des machines virtuelles, ces machines sont équipées d'un agent qui va éxécuter une séquence de commandes qui lui sont envoyées tel que des commandes pour installer des dépendances, compiler le code de l'utilisateur mais surtout l'éxécuter. Cet agent va en plus écouter la sortie standard et la sortie d'erreur produites par le code exécuté et le lui retourner.
 
 === Enregistrement des runners
 
@@ -828,7 +847,20 @@ image::{img}/q7_mcd.png["Modèle conceptuel de données"]
 .Représentation des données documentaire
 image::{img}/q7_mongo.png["Représentation des données documentaire"]
 
-A noter que pour éviter de dupliquer les données dans la base documentaire, toutes les sous documents sont stockés dans leur collection correspondants et référencées par leur identifiant unique au lieu d'être inclus directement dans leur document parent.  
+A noter que pour éviter de dupliquer les données dans la base documentaire, toutes les sous documents sont stockés dans leur collection correspondants et référencées par leur identifiant unique au lieu d'être inclus directement dans leur document parent.
+
+=== CQRS et Event Sourcing 
+
+Le _Command And Query Requests Separation_ est un design pattern qui consiste à séparer les requêtes de lecture et d'écriture dans deux SGBD différents. Cela permet de permettre aux utilisateurs de lire des données sans être inquiétés par des ralentissements causés aux locks du SGBD, dûs à l'écriture.
+
+L'_Event Sourcing_ consiste à partir du principe que l'application traverse différents états grâce à des évènements que l'on va stocker, en définitive chaque état de l'application résulte d'une combinaison distincte d'évènements, comme une fonction bijective. l'avantage de ce système est que l'on peut facilement revenir à un état antérieur de l'application en rejouant les évènements qui ont mené à cet état. Cela permet aussi de facilement débugger une application en rejouant les évènements qui ont mené à un bug.
+
+Il est possible de cumuler ces deux patterns en remplacant la base de données destinée aux commandes par une base de donnée stockant les events et un _Event Handler_ qui va les interpréter pour mettre à jour la base de données de lecture. Cela permet de garder le meilleur des deux mondes.
+
+.CQRS et Event Sourcing
+image::{img}/cqrs-es.png["CQRS et Event Sourcing"]
+
+Nous allons donc utiliser ce système pour notre application afin de garntir un maximum de performance et de fiabilité pour nos services CRUD, à savoir le service des utilisateurs, des modules et des campagnes. Lors de recherches sur les bases de données les plus adaptées pour ce pattern le nom de EventStoreDB <<ESDB>> est ressorti plusieurs fois, il s'agit d'un SGBD dans laquelle les évènements de l'application sont ajoutés dans des streams, les sdk permettent de lire ces streams et de les interpréter pour mettre à jour la base de données de lecture. Nous allons donc utiliser ce SGBD pour stocker les évènements. 
 
 <<<
 == Q8: Comment ajouter une application mobile dans le système
@@ -1018,6 +1050,8 @@ Par manque de temps et nous n'avons pas eu le temps de développer un proof of c
 * [[[rfc6202]]] https://www.rfc-editor.org/rfc/rfc6202#section-2.2
 * [[[api_swagger]]] {swagger-url}
 * [[[cloudflare]]] https://www.cloudflare.com/fr-fr/learning/access-management/what-is-mutual-tls/
+* [[[lambdo]]] https://github.com/virt-do/lambdo
+* [[[ESDB]]] https://www.eventstore.com/
 * [[[poc_q9]]] https://github.com/WoodenMaiden/poc9_polycode
 * [[[vault_ca]]] https://developer.hashicorp.com/vault/tutorials/secrets-management/pki-engine
 * [[[owasp10]]] https://owasp.org/Top10/fr/
